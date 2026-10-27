@@ -6,10 +6,10 @@ App de entrenador y deportistas: perfiles (nombre + PIN), sesiones de fuerza, na
 
 | Carpeta / archivo | Qué contiene |
 |---|---|
-| `web/index.html` | La página. Aquí está la dirección del Apps Script (`window.ABS_API`). |
-| `web/styles.css` | Colores, tipografías y aspecto. Los colores principales están al principio (`--accent`, `--hero1`…). |
-| `web/app.js` | Toda la lógica de la app. |
-| `web/inicial.json` | Biblioteca inicial (ejercicios de fuerza con vídeo, calentamientos de natación y dos planes High Force). Se carga una vez desde la pestaña Biblioteca. |
+| `docs/index.html` | La página. Aquí está la dirección del Apps Script (`window.ABS_API`). |
+| `docs/styles.css` | Colores, tipografías y aspecto. Los colores principales están al principio (`--accent`, `--hero1`…). |
+| `docs/app.js` | Toda la lógica de la app. |
+| `docs/inicial.json` | Biblioteca inicial (ejercicios de fuerza con vídeo, calentamientos de natación y dos planes High Force). Se carga una vez desde la pestaña Biblioteca. |
 | `apps-script/Codigo.gs` | El código que va en Extensiones → Apps Script de la hoja de Google. |
 | `test/` | Pruebas automáticas (simulan la hoja de Google). |
 
@@ -17,10 +17,10 @@ Los datos (deportistas, sesiones, planes, biblioteca, registros y carga) no est�
 
 ## Cambios rápidos
 
-- **Colores:** `web/styles.css`, primeras líneas.
-- **Categorías de la biblioteca:** `web/app.js`, constante `CATS`.
-- **Deportes y sus colores:** `web/app.js`, constante `DEP`.
-- **Escala de RPE:** `web/app.js`, constante `RPE_TXT`.
+- **Colores:** `docs/styles.css`, primeras líneas.
+- **Categorías de la biblioteca:** `docs/app.js`, constante `CATS`.
+- **Deportes y sus colores:** `docs/app.js`, constante `DEP`.
+- **Escala de RPE:** `docs/app.js`, constante `RPE_TXT`.
 
 Para editar un archivo en GitHub: ábrelo, pulsa el lápiz ✏️, cambia el texto y pulsa **Commit changes**. Netlify publica el cambio solo en uno o dos minutos.
 

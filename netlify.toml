@@ -1,2 +1,2 @@
 [build]
-  publish = "web"
+  publish = "docs"
