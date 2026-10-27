@@ -1,0 +1,40 @@
+const {chromium}=require('playwright');const fs=require('fs');
+const srv=require('./server.js')(8770);const B=global.__B;
+(async()=>{const b=await chromium.launch();const errs=[];
+const ctx=await b.newContext({viewport:{width:1280,height:860}});const p=await ctx.newPage();
+p.on('pageerror',e=>errs.push('coach: '+e.message));p.on('dialog',d=>d.accept());
+await p.route('https://**',r=>r.abort());
+await p.clock.setFixedTime(new Date(2026,10,4,10));
+await p.goto('http://localhost:8770/');await p.waitForTimeout(400);
+await p.click('#vc');await p.fill('#cl','clave123');await p.fill('#cl2','clave123');await p.click('#fc button');await p.waitForTimeout(500);
+await p.click('[data-tab="bib"]');await p.click('#ini');await p.waitForTimeout(1200);console.log('tras importar',B.post({a:'coach',op:'todo',clave:'clave123'}).datos.ejercicio.length);await p.click('[data-tab="dep"]');
+await p.click('#nd');await p.fill('#dn','Lucía Pérez');await p.fill('#dpn','1234');await p.fill('#dg','ABS');await p.click('[data-dp="fuerza"]');await p.click('[data-dp="natacion"]');await p.click('#edOk');await p.waitForTimeout(300);
+await p.screenshot({path:'c1.png'});
+await p.click('[data-tab="cal"]');await p.waitForTimeout(200);
+await p.click('#ap');await p.selectOption('#apl',{index:1});await p.fill('#afe','2026-11-02');await p.click('#edOk');await p.waitForTimeout(500);
+await p.screenshot({path:'c2.png'});
+// sesión de natación nueva
+await p.locator('[data-add="2026-11-03"]').click();await p.click('[data-nd="natacion"]');await p.click('#edOk');await p.waitForTimeout(300);
+await p.fill('[data-k="titulo"]','Agua AM');await p.fill('[data-k="duracion"]','120');await p.click('#nb');await p.fill('[data-bk="nombre"]','Calentamiento');
+await p.click('[data-ai="0"]');await p.waitForTimeout(200);await p.locator('#pkL [data-pe]').first().click();await p.waitForTimeout(200);
+await p.screenshot({path:'c3.png',fullPage:true});
+await p.click('#edOk');await p.waitForTimeout(500);
+await p.click('[data-tab="planes"]');await p.click('[data-p]');await p.waitForTimeout(200);await p.screenshot({path:'c4.png'});
+await p.click('[data-tab="bib"]');await p.waitForTimeout(200);await p.screenshot({path:'c5.png'});
+console.log('sesiones en hoja',B.post({a:'coach',op:'todo',clave:'clave123'}).datos.sesion.length);
+// deportista en móvil
+const c2=await b.newContext({viewport:{width:390,height:844}});const q=await c2.newPage();q.on('pageerror',e=>errs.push('dep: '+e.message));
+await q.route('https://**',r=>r.abort());await q.clock.install({time:new Date(2026,10,2,17)});
+await q.goto('http://localhost:8770/');await q.waitForTimeout(500);
+const dep=B.post({a:'lista'}).deportistas[0];await q.selectOption('#dp',dep.id);await q.fill('#pn','1234');await q.click('#fd button');await q.clock.runFor(800);
+await q.screenshot({path:'d1.png'});
+await q.locator('[data-kg]').nth(10).fill('80');await q.locator('[data-set]').nth(10).click();await q.clock.runFor(1500);
+await q.screenshot({path:'d2.png'});
+await q.locator('[data-rpe$="|7"]').click();await q.fill('[data-min]','58');await q.locator('[data-guardar]').click();await q.clock.runFor(1500);
+await q.locator('[data-fin]').scrollIntoViewIfNeeded();await q.screenshot({path:'d3.png'});
+console.log('carga',JSON.stringify(B.sheets.Carga.rows.slice(1)));
+await q.click('[data-dia="2026-11-03"]');await q.clock.runFor(300);await q.screenshot({path:'d4.png',fullPage:true});
+await q.click('[data-tab="micarga"]');await q.clock.runFor(300);await q.screenshot({path:'d5.png',fullPage:true});
+// coach ve la carga
+await p.reload();await p.waitForTimeout(600);await p.click('[data-tab="carga"]');await p.click('[data-cg]');await p.waitForTimeout(300);await p.screenshot({path:'c6.png',fullPage:true});
+console.log('errores',errs);await b.close();srv.close();process.exit(0);})();
