@@ -1,0 +1,10 @@
+const {chromium}=require('playwright');const srv=require('./server.js')(8771);
+(async()=>{const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:390,height:844}});const p=await ctx.newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('http://localhost:8771/');await p.waitForTimeout(1500);
+const man=await p.evaluate(async()=>{const r=await fetch(document.querySelector('link[rel=manifest]').href);return (await r.json()).name});
+const sw=await p.evaluate(async()=>{const r=await navigator.serviceWorker.ready;return !!r.active});
+await p.reload();await p.waitForTimeout(800);
+await ctx.setOffline(true);await p.reload();await p.waitForTimeout(800);
+const off=await p.evaluate(()=>document.body.innerText.slice(0,120));
+console.log({man,sw,off,errs});await p.screenshot({path:'pwa.png'});await b.close();srv.close();process.exit(0);})();

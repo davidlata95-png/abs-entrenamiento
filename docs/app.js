@@ -86,6 +86,25 @@ async function vaciarCola() {
 function setSync(t) { S.ui.sync = t; const el = $('#sync'); if (el) el.textContent = t; }
 window.addEventListener('online', () => { vaciarCola(); enviarRegs(); });
 
+/* ---------- Instalar en el móvil ---------- */
+let promptInstalar = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); promptInstalar = e; document.querySelectorAll('[data-inst]').forEach(x => x.hidden = false); });
+const instalada = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function bannerInstalar() {
+  if (instalada() || LS.get('abs2-noinst', false)) return '';
+  const visible = promptInstalar || esIOS();
+  return `<div class="card row" data-inst ${visible ? '' : 'hidden'}><img src="icon-192.png" alt="" width="40" height="40" style="border-radius:10px"><div class="grow"><b>Instala la app en tu móvil</b><div class="small muted">Se abre a pantalla completa desde un icono, como cualquier app.</div></div><button class="btn sm pri" id="inst">Instalar</button><button class="icon" id="noinst" aria-label="No mostrar más">✕</button></div>`;
+}
+function enlazarInstalar() {
+  const b = $('#inst'); if (!b) return;
+  b.onclick = async () => {
+    if (promptInstalar) { promptInstalar.prompt(); await promptInstalar.userChoice; promptInstalar = null; document.querySelectorAll('[data-inst]').forEach(x => x.hidden = true); return; }
+    abrirEd('Instalar en iPhone', `<div class="card list"><p><b>1.</b> Abre esta página en <b>Safari</b>.</p><p><b>2.</b> Pulsa el botón <b>Compartir</b> (el cuadrado con una flecha hacia arriba, abajo en el centro).</p><p><b>3.</b> Baja y elige <b>Añadir a pantalla de inicio</b>.</p><p><b>4.</b> Pulsa <b>Añadir</b>. Aparecerá el icono ABS en tu pantalla.</p></div>`, () => {}, 'Entendido');
+  };
+  $('#noinst').onclick = () => { LS.set('abs2-noinst', true); document.querySelectorAll('[data-inst]').forEach(x => x.remove()); };
+}
+
 /* ---------- Arranque ---------- */
 async function iniciar() {
   if (S.auth?.modo === 'coach') return entrarCoach(S.auth.clave, true);
@@ -100,7 +119,9 @@ function salir() { LS.del('abs2-auth'); LS.del('abs2-cache'); S.auth = null; loc
 
 /* ---------- Pantalla de acceso ---------- */
 async function pantallaAcceso(modo = 'dep') {
-  document.body.innerHTML = `<main class="narrow"><div class="login"><div class="row"><div class="logo">ABS</div><div><b>ABS Entrenamiento</b><div class="small muted">Plan, registro y carga</div></div></div><div id="lg" class="card">Cargando…</div></div></main>`;
+  document.body.innerHTML = `<main class="narrow"><div class="login"><div class="row"><div class="logo">ABS</div><div><b>ABS Entrenamiento</b><div class="small muted">Plan, registro y carga</div></div></div><div id="lg" class="card">Conectando con la hoja del entrenador…</div><div id="instL"></div></div></main>`;
+  if (!$('#ed')) document.body.insertAdjacentHTML('beforeend', dialogs()), setupDialogs();
+  $('#instL').innerHTML = bannerInstalar(); enlazarInstalar();
   if (!S.lista) await cargarLista();
   const L = S.lista || { deportistas: [], entrenador: true };
   const box = $('#lg');
@@ -601,11 +622,12 @@ function vSemanaDep(m) {
 function vDia(m) {
   const dia = parseKey(S.ui.dia), lun = monday(dia);
   const ss = D.sesion.filter(s => s.fecha === S.ui.dia);
-  m.innerHTML = `<div class="days">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = addDays(lun, i), k = key(d), l = D.sesion.filter(s => s.fecha === k); return `<button data-dia="${k}" aria-pressed="${k === S.ui.dia}" aria-label="${fmtLong(d)}">${DIAS[i]}<b>${d.getDate()}</b><span class="dots">${l.map(s => `<i style="--c:${DEP[s.deporte]?.c}"></i>`).join('')}</span></button>`; }).join('')}</div>
+  m.innerHTML = bannerInstalar() + `<div class="days">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = addDays(lun, i), k = key(d), l = D.sesion.filter(s => s.fecha === k); return `<button data-dia="${k}" aria-pressed="${k === S.ui.dia}" aria-label="${fmtLong(d)}">${DIAS[i]}<b>${d.getDate()}</b><span class="dots">${l.map(s => `<i style="--c:${DEP[s.deporte]?.c}"></i>`).join('')}</span></button>`; }).join('')}</div>
     <div class="row"><button class="btn sm ghost" id="pw">‹ Semana anterior</button><div class="grow"></div><button class="btn sm ghost" id="hoy">Hoy</button><button class="btn sm ghost" id="nw">Semana siguiente ›</button></div>
     ${ss.length ? ss.map(s => sesionDep(s)).join('') : `<div class="empty">${fmtLong(dia)}<br>No tienes sesión programada.</div>`}
     <p class="sync" id="sync">${esc(S.ui.sync || '')}</p>`;
   m.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { S.ui.dia = b.dataset.dia; renderDep(); });
+  enlazarInstalar();
   $('#pw').onclick = () => { S.ui.dia = key(addDays(lun, -7)); renderDep(); };
   $('#nw').onclick = () => { S.ui.dia = key(addDays(lun, 7)); renderDep(); };
   $('#hoy').onclick = () => { S.ui.dia = key(today()); renderDep(); };

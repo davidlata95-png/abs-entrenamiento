@@ -1,0 +1,17 @@
+{
+  "name": "ABS Entrenamiento",
+  "short_name": "ABS",
+  "description": "Plan, registro y carga de entrenamiento",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16302f",
+  "theme_color": "#16302f",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
