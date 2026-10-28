@@ -30,11 +30,19 @@ const DEP = {
   otro: { n: 'Otro', c: 'var(--s-otro)' },
 };
 const CATS = {
-  fuerza: ['Movilidad', 'Activación', 'Pliometría y lanzamientos', 'Derivados olímpicos', 'Dominante de cadera', 'Dominante de rodilla', 'Empuje', 'Tracción', 'Core', 'Prevención de hombro', 'Accesorios'],
+  fuerza: ['Warm up', 'Activación', 'Saltos, pliometría y fuerza explosiva', 'Fuerza · Empuje', 'Fuerza · Tracción', 'Fuerza · Dominante de rodilla', 'Fuerza · Dominante de cadera', 'Accesorios'],
   natacion: ['Calentamiento', 'Técnica', 'Parte principal', 'Velocidad', 'Vuelta a la calma'],
   carrera: ['Calentamiento', 'Técnica de carrera', 'Rodaje', 'Series', 'Tempo', 'Cuestas', 'Vuelta a la calma'],
   otro: ['General'],
 };
+// Categorías antiguas → nuevas (se aplica sola al entrar el entrenador)
+const CAT_ANT = { 'Movilidad': 'Warm up', 'Pliometría y lanzamientos': 'Saltos, pliometría y fuerza explosiva', 'Derivados olímpicos': 'Saltos, pliometría y fuerza explosiva', 'Empuje': 'Fuerza · Empuje', 'Tracción': 'Fuerza · Tracción', 'Dominante de rodilla': 'Fuerza · Dominante de rodilla', 'Dominante de cadera': 'Fuerza · Dominante de cadera', 'Core': 'Accesorios', 'Prevención de hombro': 'Accesorios' };
+const ordCat = (dep, c) => { const i = (CATS[dep] || []).indexOf(c); return i < 0 ? 99 : i; };
+const ordenEj = (a, b) => ordCat(a.deporte, a.cat) - ordCat(b.deporte, b.cat) || a.nombre.localeCompare(b.nombre, 'es');
+function migrarCats() {
+  const cambios = D.ejercicio.filter(e => e.deporte === 'fuerza' && CAT_ANT[e.cat]).map(e => ({ tipo: 'ejercicio', doc: { ...e, cat: CAT_ANT[e.cat] } }));
+  if (cambios.length) guardar(cambios);
+}
 const RPE_TXT = ['Reposo', 'Muy, muy fácil', 'Fácil', 'Moderado', 'Algo duro', 'Duro', 'Duro', 'Muy duro', 'Muy duro', 'Muy duro', 'Máximo'];
 
 /* ---------- Estado ---------- */
@@ -165,7 +173,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    marcoCoach(); vaciarCola();
+    migrarCats(); marcoCoach(); vaciarCola();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -367,7 +375,7 @@ function editSesion(s, nueva, enPlan) {
         ${(b.items || []).map((it, ii) => itemEd(s.deporte, bi, ii, it)).join('')}
         <div class="row"><button class="btn sm" data-ai="${bi}">+ Desde la biblioteca</button><button class="btn sm ghost" data-ab="${bi}">+ Línea libre</button></div>
       </div>`).join('')}
-      <div class="row"><button class="btn" id="nb">+ Añadir bloque</button>${s.deporte === 'fuerza' ? '<button class="btn ghost" id="nbF">+ Estructura de fuerza (movilidad, activación, pliometría, fuerza 1, fuerza 2, accesorios)</button>' : ''}</div>
+      <div class="row"><button class="btn" id="nb">+ Añadir bloque</button>${s.deporte === 'fuerza' ? '<button class="btn ghost" id="nbF">+ Estructura de fuerza (warm up, activación, saltos y pliometría, fuerza 1, fuerza 2, accesorios)</button>' : ''}</div>
       ${nueva ? '' : `<div class="row"><button class="btn sm" id="dup">Duplicar</button><button class="btn sm danger" id="dels">Borrar sesión</button></div>`}`;
     enlazar();
   };
@@ -380,7 +388,7 @@ function editSesion(s, nueva, enPlan) {
     const B = $('#edBody');
     B.querySelector('[data-k="deporte"]').onchange = () => { leer(); pintar(); };
     $('#nb').onclick = () => { leer(); s.bloques.push({ id: uid(), nombre: '', series: s.deporte === 'fuerza' ? 3 : '', items: [] }); pintar(); };
-    const nbF = $('#nbF'); if (nbF) nbF.onclick = () => { leer(); ['Movilidad', 'Activación', 'Pliometría, lanzamientos y power', 'Fuerza 1 · dominante de cadera + empuje', 'Fuerza 2 · dominante de rodilla + tracción', 'Accesorios'].forEach((n, i) => s.bloques.push({ id: uid(), nombre: n, series: i < 2 ? 2 : 3, items: [] })); pintar(); };
+    const nbF = $('#nbF'); if (nbF) nbF.onclick = () => { leer(); ['Warm up', 'Activación', 'Saltos, pliometría y fuerza explosiva', 'Fuerza 1 · dominante de cadera + empuje', 'Fuerza 2 · dominante de rodilla + tracción', 'Accesorios'].forEach((n, i) => s.bloques.push({ id: uid(), nombre: n, series: i < 2 ? 2 : 3, items: [] })); pintar(); };
     B.querySelectorAll('[data-db]').forEach(x => x.onclick = () => { leer(); s.bloques.splice(+x.dataset.db, 1); pintar(); });
     B.querySelectorAll('[data-mb]').forEach(x => x.onclick = () => { leer(); const [i, d] = x.dataset.mb.split('|').map(Number); const j = i + d; if (j < 0 || j >= s.bloques.length) return; [s.bloques[i], s.bloques[j]] = [s.bloques[j], s.bloques[i]]; pintar(); });
     B.querySelectorAll('[data-ab]').forEach(x => x.onclick = () => { leer(); s.bloques[+x.dataset.ab].items.push({ id: uid(), nombre: '' }); pintar(); });
@@ -429,8 +437,9 @@ function itemEd(dep, bi, ii, it) {
 function elegirEjercicio(dep, cb) {
   const dl = $('#pk'); let f = { q: '', dep, cat: '' };
   const pintar = () => {
-    const lista = D.ejercicio.filter(e => (!f.dep || e.deporte === f.dep) && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre).includes(norm(f.q)))).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-    $('#pkL').innerHTML = lista.length ? lista.slice(0, 200).map(e => `<button class="item" data-pe="${e.id}"><div class="t"><b>${esc(e.nombre)}</b><small>${esc(e.cat || '')}</small></div>${e.video ? '<span class="small muted">▶</span>' : ''}</button>`).join('') : '<div class="empty">Nada en la biblioteca con ese filtro.</div>';
+    const lista = D.ejercicio.filter(e => (!f.dep || e.deporte === f.dep) && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre).includes(norm(f.q)))).sort(ordenEj);
+    let ult = null;
+    $('#pkL').innerHTML = lista.length ? lista.slice(0, 300).map(e => `${e.cat !== ult ? `<div class="bh" style="--c:${DEP[e.deporte]?.c}"><i></i>${esc((ult = e.cat) || 'Sin categoría')}</div>` : ''}<button class="item" data-pe="${e.id}"><div class="t"><b>${esc(e.nombre)}</b><small>${esc(e.cat || '')}</small></div>${e.video ? '<span class="small muted">▶</span>' : ''}</button>`).join('') : '<div class="empty">Nada en la biblioteca con ese filtro.</div>';
     $('#pkL').querySelectorAll('[data-pe]').forEach(b => b.onclick = () => { dl.close(); cb(byId('ejercicio', b.dataset.pe)); });
   };
   $('#pkC').innerHTML = `<option value="">Todas las categorías</option>${(CATS[dep] || []).map(c => `<option>${esc(c)}</option>`).join('')}`;
@@ -475,14 +484,15 @@ function vPlan(m) {
 /* ---------- Biblioteca ---------- */
 function vBiblioteca(m) {
   const f = S.ui.bib = S.ui.bib || { dep: 'fuerza', cat: '', q: '' };
-  const lista = D.ejercicio.filter(e => e.deporte === f.dep && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre + ' ' + (e.texto || '')).includes(norm(f.q)))).sort((a, b) => (a.cat || '').localeCompare(b.cat || '', 'es') || a.nombre.localeCompare(b.nombre, 'es'));
+  const lista = D.ejercicio.filter(e => e.deporte === f.dep && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre + ' ' + (e.texto || '')).includes(norm(f.q)))).sort(ordenEj);
+  const grupos = []; lista.forEach(e => { const g = grupos[grupos.length - 1]; if (g && g.cat === (e.cat || '')) g.l.push(e); else grupos.push({ cat: e.cat || '', l: [e] }); });
   const n = k => D.ejercicio.filter(e => e.deporte === k).length;
   const vacia = !D.ejercicio.length && !D.plan.length;
   m.innerHTML = `<div class="row"><h2 class="grow">Biblioteca</h2><button class="btn pri" id="ne">+ Nuevo</button></div>
     ${vacia ? '<div class="card row"><div class="grow"><b>Biblioteca vacía</b><div class="small muted">Puedes empezar con los ejercicios de fuerza del mesociclo High Force (con vídeo), calentamientos de natación de @swimcoachjj y los dos planes High Force de 4 semanas.</div></div><button class="btn pri" id="ini">Cargar biblioteca inicial</button></div>' : ''}
     <div class="chips">${Object.entries(DEP).map(([k, v]) => `<button class="chip" data-bd="${k}" aria-pressed="${f.dep === k}"><i style="--c:${v.c}"></i>${v.n} · ${n(k)}</button>`).join('')}</div>
     <div class="row"><input class="f grow" id="bq" placeholder="Buscar" value="${esc(f.q)}" style="max-width:320px"><select class="f" id="bc" style="max-width:260px"><option value="">Todas las categorías</option>${(CATS[f.dep] || []).map(c => `<option ${c === f.cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
-    ${lista.length ? `<div class="libgrid">${lista.map(e => `<button class="item" data-e="${e.id}">${vidId(e.video) ? `<img src="https://i.ytimg.com/vi/${vidId(e.video)}/default.jpg" alt="" width="48" height="36" style="border-radius:6px;object-fit:cover;flex:none" loading="lazy">` : ''}<div class="t"><b>${esc(e.nombre)}</b><small>${esc(e.cat || '')}${e.fuente ? ' · ' + esc(e.fuente) : ''}</small></div></button>`).join('')}</div>` : '<div class="empty">No hay nada en esta categoría todavía.</div>'}`;
+    ${lista.length ? grupos.map(g => `<h3 style="margin-top:6px">${esc(g.cat || 'Sin categoría')} <span class="small muted">· ${g.l.length}</span></h3><div class="libgrid">${g.l.map(e => `<button class="item" data-e="${e.id}">${vidId(e.video) ? `<img src="https://i.ytimg.com/vi/${vidId(e.video)}/default.jpg" alt="" width="48" height="36" style="border-radius:6px;object-fit:cover;flex:none" loading="lazy">` : ''}<div class="t"><b>${esc(e.nombre)}</b><small>${e.dur ? e.dur + ' s' : ''}${e.dur && e.fuente ? ' · ' : ''}${e.fuente ? esc(e.fuente) : ''}</small></div></button>`).join('')}</div>`).join('') : '<div class="empty">No hay nada en esta categoría todavía.</div>'}`;
   m.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => { f.dep = b.dataset.bd; f.cat = ''; vBiblioteca(m); });
   $('#bq').oninput = e => { f.q = e.target.value; clearTimeout(f._t); f._t = setTimeout(() => { vBiblioteca(m); const i = $('#bq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
   $('#bc').onchange = e => { f.cat = e.target.value; vBiblioteca(m); };
@@ -497,17 +507,18 @@ function editEjercicio(e, nuevo) {
     <div class="grid2"><label class="l">Deporte<select class="f" id="ed2">${Object.entries(DEP).map(([k, v]) => `<option value="${k}" ${k === e.deporte ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label>
     <label class="l">Categoría<input class="f" id="ec" value="${esc(e.cat || '')}" list="cats"></label></div>
     <datalist id="cats">${(CATS[e.deporte] || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist>
-    <label class="l">Vídeo (enlace de YouTube, ≤10 s)<input class="f" id="ev" value="${esc(e.video || '')}"></label>
+    <label class="l">Vídeo de YouTube (máximo 10 s, solo la ejecución)<input class="f" id="ev" value="${esc(e.video || '')}" placeholder="https://www.youtube.com/shorts/…"></label>
+    <p class="small" id="evDur">${e.video && !vidId(e.video) ? '⚠ No es un enlace de YouTube.' : e.dur ? `Duración: ${e.dur} s ${e.dur <= 10 ? '✓' : '· ⚠ supera los 10 s'}` : ''}</p>
     ${vidId(e.video) ? `<button type="button" class="thumb" data-v="${vidId(e.video)}" data-n="${esc(e.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${vidId(e.video)}/hqdefault.jpg" alt=""><span>${PLAY}</span></button>` : ''}
     <label class="l">${e.deporte === 'fuerza' ? 'Indicaciones de ejecución' : 'Descripción de la tarea (texto tal cual)'}<textarea class="f ${e.deporte === 'fuerza' ? '' : 'mono'}" id="et" rows="5">${esc(e.texto || '')}</textarea></label>
     <label class="l">Fuente<input class="f" id="ef" value="${esc(e.fuente || '')}" placeholder="p. ej. @swimcoachjj, 19/10/26"></label>
     <div class="l">Valores por defecto al añadirlo a una sesión<div class="grid2">${(CAMPOS[e.deporte] || CAMPOS.otro).map(([k, n]) => `<label class="l">${n}<input class="f" data-df="${k}" value="${esc(e.def[k] || '')}"></label>`).join('')}</div></div></div>
     ${nuevo ? '' : '<button class="btn danger" id="dele">Borrar de la biblioteca</button>'}`;
   const leer = () => { e.nombre = $('#en').value.trim(); e.deporte = $('#ed2').value; e.cat = $('#ec').value.trim(); e.video = $('#ev').value.trim(); e.texto = $('#et').value; e.fuente = $('#ef').value.trim(); document.querySelectorAll('[data-df]').forEach(i => { if (i.value) e.def[i.dataset.df] = i.value; else delete e.def[i.dataset.df]; }); };
-  abrirEd(nuevo ? 'Nuevo ejercicio' : e.nombre, pinta(), () => { leer(); if (!e.nombre) return toast('Falta el nombre'), false; guardar([{ tipo: 'ejercicio', doc: e }]); renderCoach(); });
+  abrirEd(nuevo ? 'Nuevo ejercicio' : e.nombre, pinta(), () => { leer(); if (!e.nombre) return toast('Falta el nombre'), false; if (e.video && !vidId(e.video)) return toast('El vídeo tiene que ser un enlace de YouTube'), false; if (e.dur > 10) return toast(`El vídeo dura ${e.dur} s: elige uno de 10 s o menos`), false; guardar([{ tipo: 'ejercicio', doc: e }]); renderCoach(); });
   const enl = () => {
     $('#ed2').onchange = () => { leer(); $('#edBody').innerHTML = pinta(); enl(); };
-    $('#ev').onchange = () => { leer(); $('#edBody').innerHTML = pinta(); enl(); };
+    $('#ev').onchange = async () => { leer(); delete e.dur; $('#edBody').innerHTML = pinta(); enl(); const v = vidId(e.video); if (!v) return; $('#evDur').textContent = 'Comprobando la duración…'; const d = await duracionYT(v); if (vidId(e.video) !== v) return; if (d) e.dur = d; $('#evDur').textContent = d ? `Duración: ${d} s ${d <= 10 ? '✓' : '· ⚠ supera los 10 s: elige otro vídeo'}` : 'No se pudo comprobar la duración.'; };
     const d = $('#dele'); if (d) d.onclick = () => { if (confirm('¿Borrar este ejercicio de la biblioteca? Las sesiones que ya lo usan no cambian.')) { borrar([{ tipo: 'ejercicio', id: e.id }]); cerrarEd(); renderCoach(); } };
   };
   enl();
@@ -714,6 +725,24 @@ async function enviarRegs() {
 /* ---------- Vídeo emergente, descanso y editor a pantalla completa ---------- */
 const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>';
+// Duración de un vídeo de YouTube con su reproductor oficial (sin clave de API)
+let ytListo = null;
+function cargarYT() {
+  if (ytListo) return ytListo;
+  ytListo = new Promise(ok => { if (window.YT?.Player) return ok(); window.onYouTubeIframeAPIReady = ok; const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; document.head.append(sc); });
+  return ytListo;
+}
+async function duracionYT(v) {
+  try {
+    await Promise.race([cargarYT(), new Promise((_, n) => setTimeout(n, 8000))]);
+    return await new Promise(ok => {
+      const div = document.createElement('div'); div.style.cssText = 'position:fixed;left:-9999px;width:200px;height:200px'; const h = document.createElement('div'); div.append(h); document.body.append(div);
+      const fin = d => { try { pl.destroy(); } catch (e) {} div.remove(); ok(d); };
+      const t = setTimeout(() => fin(null), 10000);
+      const pl = new YT.Player(h, { videoId: v, events: { onReady: () => { const d = Math.round(pl.getDuration()); if (d) { clearTimeout(t); fin(d); } else { pl.mute(); pl.playVideo(); } }, onStateChange: () => { const d = Math.round(pl.getDuration()); if (d) { clearTimeout(t); fin(d); } }, onError: () => { clearTimeout(t); fin(null); } } });
+    });
+  } catch (e) { return null; }
+}
 const vidId = u => (String(u || '').match(/(?:shorts\/|v=|youtu\.be\/|embed\/)([\w-]{11})/) || [])[1];
 function dialogs() {
   return `<dialog id="vd" aria-label="Vídeo del ejercicio"><div class="vbox"><button type="button" class="vclose" aria-label="Cerrar vídeo">×</button><div class="vframe"><iframe title="Vídeo" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div><p></p></div></dialog>

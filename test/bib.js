@@ -1,0 +1,10 @@
+const {chromium}=require('playwright');const srv=require('./server.js')(8772);const B=global.__B;
+(async()=>{B.post({a:'coach',op:'crearClave',clave:'clave123'});
+B.post({a:'coach',op:'guardar',clave:'clave123',docs:[{tipo:'ejercicio',doc:{id:'x1',nombre:'Press viejo',deporte:'fuerza',cat:'Empuje',video:''}},...require('../docs/inicial.json').filter(x=>x.tipo==='ejercicio')]});
+const b=await chromium.launch();const p=await b.newPage({viewport:{width:1100,height:900}});const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.route('https://**',r=>r.abort());
+await p.addInitScript(()=>{localStorage.setItem('abs2-auth',JSON.stringify({modo:'coach',clave:'clave123'}));localStorage.setItem('abs2-tab','"bib"')});
+await p.goto('http://localhost:8772/');await p.waitForTimeout(1500);
+console.log('cat migrada:',B.post({a:'coach',op:'todo',clave:'clave123'}).datos.ejercicio.find(e=>e.id==='x1').cat);
+console.log((await p.locator('main h3').allInnerTexts()).join(' | '));
+await p.screenshot({path:'bib.png'});console.log(errs);await b.close();srv.close();process.exit(0);})();
