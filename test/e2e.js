@@ -13,6 +13,9 @@ await p.screenshot({path:'c1.png'});
 await p.click('[data-tab="cal"]');await p.waitForTimeout(200);
 await p.click('#ap');await p.selectOption('#apl',{index:1});await p.fill('#afe','2026-11-02');await p.click('#edOk');await p.waitForTimeout(500);
 await p.screenshot({path:'c2.png'});
+await p.click('#ap');await p.click('[data-am="exa"]');await p.fill('#afe','2026-11-09');await p.fill('#aex','2026-11-21');await p.dispatchEvent('#aex','change');
+console.log('examen:',await p.textContent('#ares'));await p.click('#edOk');await p.waitForTimeout(300);
+const ses=B.post({a:'coach',op:'todo',clave:'clave123'}).datos.sesion.filter(x=>x.fecha>='2026-11-09');await p.click('#pw');await p.waitForTimeout(200);console.log('desde 9 nov',ses.length,ses.map(x=>x.fecha+':S'+x.plan.semana).join(' '));
 // sesión de natación nueva
 await p.locator('[data-add="2026-11-03"]').click();await p.click('[data-nd="natacion"]');await p.click('#edOk');await p.waitForTimeout(300);
 await p.fill('[data-k="titulo"]','Agua AM');await p.fill('[data-k="duracion"]','120');await p.click('#nb');await p.fill('[data-bk="nombre"]','Calentamiento');

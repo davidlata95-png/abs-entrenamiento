@@ -262,20 +262,47 @@ function asignarPlan() {
   abrirEd('Asignar plan', `<div class="card list">
     <label class="l">Plan<select class="f" id="apl">${D.plan.map(p => `<option value="${p.id}">${esc(p.nombre)} · ${p.semanas} sem.</option>`).join('')}</select></label>
     <label class="l">Empieza el lunes<input class="f" type="date" id="afe" value="${key(monday(addDays(new Date(), 7)))}"></label>
+    <div class="l">¿Desde qué semana del plan?<div class="chips"><button type="button" class="chip" data-am="ini" aria-pressed="true">Desde la semana 1</button><button type="button" class="chip" data-am="sem" aria-pressed="false">Desde otra semana</button><button type="button" class="chip" data-am="exa" aria-pressed="false">Ajustar a la fecha del examen</button></div></div>
+    <label class="l hidden" id="wSem">Empieza en la semana del plan<select class="f" id="asem"></select></label>
+    <label class="l hidden" id="wExa">Fecha del examen<input class="f" type="date" id="aex"></label>
+    <p class="small" id="ares"></p>
     <div class="l">Deportistas<div class="chips">${deps.map(d => `<button type="button" class="chip" data-ad="${d.id}" aria-pressed="${d.id === S.ui.dep}">${esc(d.nombre)}</button>`).join('')}</div></div>
-    <p class="small muted">Se crean las sesiones del plan en el calendario de cada deportista. Luego puedes editar cualquiera por separado.</p></div>`,
+    <p class="small muted">Se crean las sesiones en el calendario de cada deportista. Si el aspirante tiene menos semanas que el plan, se usan las últimas semanas del plan, para que la puesta a punto caiga justo antes del examen.</p></div>`,
     () => {
-      const p = byId('plan', $('#apl').value), ini = monday(parseKey($('#afe').value || key(new Date())));
+      const r = calc(); if (!r) return false;
       const sel = [...document.querySelectorAll('[data-ad][aria-pressed="true"]')].map(b => b.dataset.ad);
       if (!sel.length) return toast('Elige al menos un deportista'), false;
       const docs = [];
-      sel.forEach(depId => (p.sesiones || []).forEach(s => {
+      sel.forEach(depId => (r.p.sesiones || []).filter(s => s.semana >= r.desde).forEach(s => {
+        const f = addDays(r.ini, (s.semana - r.desde) * 7 + (s.dia - 1));
+        if (r.hasta && key(f) > r.hasta) return;
         const n = clone(s); delete n.semana; delete n.dia;
-        Object.assign(n, { id: uid(), dep: depId, fecha: key(addDays(ini, (s.semana - 1) * 7 + (s.dia - 1))), plan: { id: p.id, semana: s.semana, dia: s.dia } });
+        Object.assign(n, { id: uid(), dep: depId, fecha: key(f), plan: { id: r.p.id, semana: s.semana, dia: s.dia } });
         docs.push({ tipo: 'sesion', doc: n });
       }));
-      guardar(docs); S.ui.semana = key(ini); renderCoach(); toast(`${docs.length} sesiones creadas`);
+      if (!docs.length) return toast('No queda ninguna sesión con esas fechas'), false;
+      guardar(docs); S.ui.semana = key(r.ini); renderCoach(); toast(`${docs.length} sesiones creadas`);
     }, 'Asignar');
+  let modo = 'ini';
+  const calc = () => {
+    const p = byId('plan', $('#apl').value), ini = monday(parseKey($('#afe').value || key(new Date())));
+    let desde = 1, hasta = null, txt = '';
+    if (modo === 'sem') desde = +$('#asem').value || 1;
+    if (modo === 'exa') {
+      if (!$('#aex').value) { $('#ares').textContent = 'Elige la fecha del examen.'; return null; }
+      const ex = parseKey($('#aex').value); hasta = key(addDays(ex, -1));
+      const sem = Math.floor((monday(ex) - ini) / (7 * 864e5)) + 1;
+      if (sem < 1) { $('#ares').textContent = 'El examen es antes del inicio.'; return null; }
+      desde = Math.max(1, p.semanas - sem + 1);
+      txt = sem >= p.semanas ? `Hay ${sem} semanas hasta el examen: se asigna el plan entero.` : `Hay ${sem} semanas hasta el examen: se asignan las semanas ${desde} a ${p.semanas} del plan.`;
+    } else txt = `Se asignan las semanas ${desde} a ${p.semanas} del plan (${p.semanas - desde + 1} semanas).`;
+    $('#ares').textContent = txt;
+    return { p, ini, desde, hasta };
+  };
+  const llenar = () => { const p = byId('plan', $('#apl').value); $('#asem').innerHTML = Array.from({ length: p.semanas }, (_, i) => `<option value="${i + 1}">Semana ${i + 1}</option>`).join(''); calc(); };
+  document.querySelectorAll('[data-am]').forEach(b => b.onclick = () => { modo = b.dataset.am; document.querySelectorAll('[data-am]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#wSem').classList.toggle('hidden', modo !== 'sem'); $('#wExa').classList.toggle('hidden', modo !== 'exa'); calc(); });
+  ['#apl'].forEach(s => $(s).onchange = llenar); ['#afe', '#asem', '#aex'].forEach(s => $(s).onchange = calc);
+  llenar();
   document.querySelectorAll('[data-ad]').forEach(b => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
 }
 function copiarSemana(lun, dep) {
