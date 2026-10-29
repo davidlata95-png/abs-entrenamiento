@@ -224,7 +224,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); marcoCoach(); vaciarCola();
+    migrarCats(); marcoCoach(); vaciarCola(); importarAbsSeco();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -244,6 +244,18 @@ function renderCoach() {
   LS.set('abs2-cache', { modo: 'coach', datos: D });
   const m = $('#main');
   ({ dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, carga: vCarga })[S.tab](m);
+}
+
+// Paso único: trae el grupo de ABS Seco (Preparación física CDNS), sus nadadores, las 12 sesiones de High Force
+// y los kilos que ya habían registrado. Solo añade lo que falta, así que no pisa nada de lo que se haya registrado aquí.
+async function importarAbsSeco() {
+  if (LS.get('abs2-mig-absseco', false)) return;
+  try {
+    const docs = await (await fetch('migracion-abs-seco.json', { cache: 'no-store' })).json();
+    const faltan = docs.filter(x => !byId(x.tipo, x.doc.id));
+    if (faltan.length) { guardar(faltan); renderCoach(); toast('Grupo Preparación física CDNS listo con el High Force de ABS Seco', 3500); }
+    LS.set('abs2-mig-absseco', true);
+  } catch (e) {}
 }
 
 /* ---------- Deportistas ---------- */
