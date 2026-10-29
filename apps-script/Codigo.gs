@@ -145,7 +145,7 @@ function guardarDocs_(docs) {
     if (!d || !d.id) return;
     const js = JSON.stringify(d), trozos = [];
     for (let i = 0; i < js.length; i += TROZO_) trozos.push(js.slice(i, i + TROZO_));
-    const fila = [x.tipo, d.id, ahora, d.dep || ''].concat(trozos);
+    const fila = [x.tipo, d.id, ahora, d.dep || (d.grupo ? 'g:' + d.grupo : '')].concat(trozos);
     const p = pos[x.tipo + '|' + d.id];
     if (p) {
       const nc = Math.max(5, sh.getLastColumn());
@@ -169,11 +169,23 @@ function claveOk_(clave) {
   return !!h && h === huella_(String(clave || ''));
 }
 
-function deportista_(id, pin) {
+const normN_ = t => String(t || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+const pinOk_ = p => /^\d{4}$/.test(String(p || ''));
+function docs_(filas, tipo) { return filas.filter(r => r.tipo === tipo).map(doc_).filter(Boolean); }
+
+// Deportista con ese PIN. Si aún no tiene PIN (alta desde un grupo), el primer PIN que escribe queda como suyo.
+function deportista_(id, pin, reclamar) {
   const r = leerDatos_().find(x => x.tipo === 'deportista' && x.id === String(id));
   const d = r && doc_(r);
-  if (!d || String(d.pin || '') !== String(pin || '')) return null;
+  if (!d) return null;
+  if (!d.pin && reclamar && pinOk_(pin)) { d.pin = String(pin); guardarDocs_([{ tipo: 'deportista', doc: d }]); return d; }
+  if (!d.pin || String(d.pin) !== String(pin || '')) return null;
   return d;
+}
+
+function grupoPorCodigo_(filas, codigo) {
+  const c = String(codigo || '').trim().toUpperCase();
+  return c ? docs_(filas, 'grupo').find(g => String(g.codigo || '').toUpperCase() === c) : null;
 }
 
 function anotarCarga_(reg, dep, ses) {
@@ -189,33 +201,92 @@ function anotarCarga_(reg, dep, ses) {
   else sh.appendRow(fila);
 }
 
+// Copia los kilos y comentarios de las sesiones de fuerza en las pestañas Registro y Comentarios
+// (mismo formato que usaba ABS Seco, para que el resumen y el tablero sigan funcionando)
+function anotarSeries_(reg, dep, ses) {
+  if (!ses || ses.deporte !== 'fuerza') return;
+  const sh = hoja_(HOJA), shC = hoja_(HOJA_COM);
+  const ids = ids_(sh, 12), idsC = ids_(shC, 8);
+  const ahora = new Date(), nombre = dep.nombre, fecha = reg.fecha || ses.fecha || '';
+  const semana = (ses.plan && ses.plan.semana) || '', dia = ses.diaTxt || '';
+  const bl = ses.bloques || [];
+  Object.keys(reg.sets || {}).forEach(k => {
+    const [bi, ii, n] = k.split('|').map(Number), b = bl[bi], it = b && (b.items || [])[ii];
+    if (!it) return;
+    const v = reg.sets[k] || {}, id = [nombre, fecha, bi, ii, n].join('|');
+    if (!v.kg && !v.ok && ids.indexOf(id) < 0) return;
+    const p = String(it.reps || '').split(/\s*[-·]\s*/).filter(Boolean);
+    const reps = p.length > 1 ? (p[n] !== undefined ? p[n] : p[p.length - 1]) : (it.reps || '');
+    upsert_(sh, ids, id, [ahora, nombre, fecha, semana, dia, b.nombre || '', it.nombre || '', n + 1, reps, kg_(v.kg), v.ok ? 'Sí' : '', id]);
+  });
+  Object.keys(reg.coment || {}).forEach(k => {
+    const [bi, ii] = k.split('|').map(Number), it = bl[bi] && (bl[bi].items || [])[ii];
+    if (!it) return;
+    const t = String(reg.coment[k] || ''), id = [nombre, fecha, bi, ii, 'c'].join('|');
+    if (!t && idsC.indexOf(id) < 0) return;
+    upsert_(shC, idsC, id, [ahora, nombre, fecha, semana, dia, it.nombre || '', t, id]);
+  });
+}
+
 function api_(q) {
   const a = q.a;
   if (a === 'lista') {
-    const deps = leerDatos_().filter(r => r.tipo === 'deportista').map(doc_).filter(Boolean)
-      .filter(d => !d.archivado).map(d => ({ id: d.id, nombre: d.nombre }));
+    const filas = leerDatos_();
+    let deps = docs_(filas, 'deportista').filter(d => !d.archivado);
+    let grupo = null;
+    if (q.g) {
+      const g = grupoPorCodigo_(filas, q.g);
+      if (g) { grupo = { id: g.id, nombre: g.nombre }; deps = deps.filter(d => (d.grupos || []).indexOf(g.id) >= 0); }
+    }
+    deps = deps.map(d => ({ id: d.id, nombre: d.nombre, nuevo: !d.pin }));
     deps.sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
-    return { ok: true, deportistas: deps, entrenador: !!hConfig_().getRange('B1').getValue() };
+    return { ok: true, deportistas: deps, grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue() };
+  }
+  if (a === 'unirse') {
+    const filas = leerDatos_();
+    const g = grupoPorCodigo_(filas, q.g);
+    if (!g) return { ok: false, error: 'grupo' };
+    const nombre = String(q.nombre || '').trim().replace(/\s+/g, ' ');
+    if (nombre.length < 2) return { ok: false, error: 'nombre' };
+    if (!pinOk_(q.pin)) return { ok: false, error: 'pin' };
+    const igual = docs_(filas, 'deportista').filter(d => normN_(d.nombre) === normN_(nombre));
+    // ya existe con ese nombre: si el PIN coincide (o aún no tiene), se le añade al grupo
+    const yo = igual.find(d => !d.pin || String(d.pin) === String(q.pin));
+    if (yo) {
+      if (!yo.pin) yo.pin = String(q.pin);
+      yo.grupos = [...new Set([...(yo.grupos || []), g.id])];
+      delete yo.archivado;
+      guardarDocs_([{ tipo: 'deportista', doc: yo }]);
+      return { ok: true, id: yo.id };
+    }
+    if (igual.length) return { ok: false, error: 'existe' };
+    const d = { id: 'd' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), nombre, pin: String(q.pin), grupos: [g.id], deportes: g.deportes || [], notas: '', alta: 'enlace' };
+    guardarDocs_([{ tipo: 'deportista', doc: d }]);
+    return { ok: true, id: d.id };
   }
   if (a === 'login' || a === 'registro') {
-    const dep = deportista_(q.id, q.pin);
+    const dep = deportista_(q.id, q.pin, a === 'login');
     if (!dep) return { ok: false, error: 'pin' };
+    const filas = leerDatos_();
+    const refs = {}; refs[dep.id] = 1; (dep.grupos || []).forEach(g => refs['g:' + g] = 1);
     if (a === 'registro') {
       const reg = q.reg;
       reg.dep = dep.id;
-      const ses = leerDatos_().filter(r => r.tipo === 'sesion' && r.id === reg.id).map(doc_)[0];
+      const ses = docs_(filas.filter(r => r.tipo === 'sesion' && (r.id === reg.ses || r.id === reg.id)), 'sesion')[0];
+      if (ses && ses.grupo) { reg.ses = ses.id; reg.id = ses.id + '~' + dep.id; }
       guardarDocs_([{ tipo: 'registro', doc: reg }]);
       anotarCarga_(reg, dep, ses);
+      anotarSeries_(reg, dep, ses);
       return { ok: true };
     }
-    const filas = leerDatos_();
-    const mias = t => filas.filter(r => r.tipo === t && r.ref === dep.id).map(doc_).filter(Boolean);
-    const sesiones = mias('sesion'), registros = mias('registro');
+    const sesiones = filas.filter(r => r.tipo === 'sesion' && refs[r.ref]).map(doc_).filter(Boolean);
+    const registros = filas.filter(r => r.tipo === 'registro' && r.ref === dep.id).map(doc_).filter(Boolean);
     const usados = {};
     sesiones.forEach(s => (s.bloques || []).forEach(b => (b.items || []).forEach(it => { if (it.ej) usados[it.ej] = 1; })));
     const ejercicios = filas.filter(r => r.tipo === 'ejercicio' && usados[r.id]).map(doc_).filter(Boolean);
+    const grupos = docs_(filas, 'grupo').filter(g => (dep.grupos || []).indexOf(g.id) >= 0).map(g => ({ id: g.id, nombre: g.nombre }));
     const { pin, ...pub } = dep;
-    return { ok: true, dep: pub, sesiones, registros, ejercicios };
+    return { ok: true, dep: pub, sesiones, registros, ejercicios, grupos };
   }
   if (a === 'coach') {
     if (q.op === 'crearClave') {

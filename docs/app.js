@@ -48,11 +48,25 @@ const RPE_TXT = ['Reposo', 'Muy, muy fácil', 'Fácil', 'Moderado', 'Algo duro',
 /* ---------- Estado ---------- */
 const S = {
   auth: LS.get('abs2-auth', null), // {modo:'coach', clave} | {modo:'dep', id, pin, nombre}
-  datos: { deportista: [], ejercicio: [], sesion: [], plan: [], registro: [] },
+  datos: { deportista: [], grupo: [], ejercicio: [], sesion: [], plan: [], registro: [] },
   lista: null, tab: null, ui: {}, guardando: 0,
 };
 const D = S.datos;
-const byId = (t, id) => D[t].find(x => x.id === id);
+const byId = (t, id) => (D[t] || []).find(x => x.id === id);
+const porNombre = (a, b) => a.nombre.localeCompare(b.nombre, 'es');
+const depsOrd = () => D.deportista.filter(d => !d.archivado).sort(porNombre);
+const gruposOrd = () => [...D.grupo].sort(porNombre);
+const miembros = g => g ? depsOrd().filter(d => (d.grupos || []).includes(g.id)) : [];
+// Destinatarios de una sesión: un grupo ("g:ID") o un deportista ("ID")
+function quien(k) {
+  if (String(k || '').startsWith('g:')) { const g = byId('grupo', k.slice(2)); return g && { k, grupo: g, nombre: g.nombre, filtro: s => s.grupo === g.id, asig: { grupo: g.id } }; }
+  const d = byId('deportista', k); return d && !d.archivado && { k, dep: d, nombre: d.nombre, filtro: s => s.dep === d.id, asig: { dep: d.id } };
+}
+const destinos = () => [...gruposOrd().map(g => quien('g:' + g.id)), ...depsOrd().map(d => quien(d.id))];
+const chipsDestinos = (attr, sel) => { const gs = gruposOrd(), ds = depsOrd(); return `${gs.length ? `<div class="l">Grupos<div class="chips">${gs.map(g => `<button type="button" class="chip" ${attr}="g:${g.id}" aria-pressed="${sel === 'g:' + g.id}"><i style="--c:var(--accent)"></i>${esc(g.nombre)}</button>`).join('')}</div></div>` : ''}<div class="l">Deportistas<div class="chips">${ds.map(d => `<button type="button" class="chip" ${attr}="${d.id}" aria-pressed="${sel === d.id}">${esc(d.nombre)}</button>`).join('')}</div></div>`; };
+// Registro de una sesión en el móvil del deportista: en las de grupo cada uno tiene el suyo
+const rid = s => s.grupo ? `${s.id}~${S.yo?.id}` : s.id;
+const regDe = s => s && byId('registro', rid(s));
 
 /* ---------- API ---------- */
 async function api(body) {
@@ -119,8 +133,15 @@ async function iniciar() {
   if (S.auth?.modo === 'dep') return entrarDep(S.auth.id, S.auth.pin, true);
   pantallaAcceso();
 }
+// Código del grupo: llega en el enlace (?g=CODIGO) y se recuerda en el móvil
+function codigoG() {
+  const u = new URLSearchParams(location.search).get('g');
+  if (u) LS.set('abs2-g', u.trim().toUpperCase());
+  return LS.get('abs2-g', '');
+}
 async function cargarLista() {
-  try { const j = await api({ a: 'lista' }); if (j.ok) { S.lista = j; LS.set('abs2-lista', j); } }
+  const g = codigoG();
+  try { const j = await api(g ? { a: 'lista', g } : { a: 'lista' }); if (j.ok) { if (j.grupoMal) LS.del('abs2-g'); S.lista = j; LS.set('abs2-lista', j); } }
   catch (e) { S.lista = LS.get('abs2-lista', null); }
 }
 function salir() { LS.del('abs2-auth'); LS.del('abs2-cache'); S.auth = null; location.reload(); }
@@ -148,15 +169,45 @@ async function pantallaAcceso(modo = 'dep') {
     };
     return;
   }
-  const deps = L.deportistas || [];
-  box.innerHTML = `<h2>¿Quién eres?</h2>
-    <form id="fd" class="list"><select class="f" id="dp" required><option value="">Elige tu nombre</option>${deps.map(d => `<option value="${esc(d.id)}">${esc(d.nombre)}</option>`).join('')}</select>
-    <label class="l">PIN (4 cifras)<input class="f mono" id="pn" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" required></label>
+  const deps = L.deportistas || [], G = L.grupo;
+  const pinIn = (id, extra = '') => `<input class="f mono" id="${id}" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required ${extra}>`;
+  box.innerHTML = `${G ? `<p class="small muted" style="margin:0">Grupo</p><h2 style="margin-top:0">${esc(G.nombre)}</h2>` : '<h2>¿Quién eres?</h2>'}
+    ${L.grupoMal ? '<p class="small" style="color:var(--bad)">Ese enlace de grupo no existe. Pide el enlace nuevo a tu entrenador.</p>' : ''}
+    <form id="fd" class="list" ${deps.length ? '' : 'hidden'}><select class="f" id="dp" required><option value="">Elige tu nombre</option>${deps.map(d => `<option value="${esc(d.id)}" ${d.nuevo ? 'data-nuevo="1"' : ''}>${esc(d.nombre)}</option>`).join('')}</select>
+    <label class="l"><span id="pnL">PIN (4 cifras)</span>${pinIn('pn')}</label>
+    <label class="l hidden" id="pn2W">Repite el PIN${pinIn('pn2')}</label>
     <button class="btn pri">Entrar</button><p id="err" class="small" style="color:var(--bad)"></p></form>
-    ${deps.length ? '' : '<p class="muted small">Todavía no hay deportistas. Tu entrenador tiene que darte de alta.</p>'}
-    <button class="btn ghost sm" id="vc">Soy el entrenador →</button>`;
+    ${G ? `<button class="btn ${deps.length ? 'ghost' : 'pri'}" id="vu" type="button">${deps.length ? '¿No estás en la lista? Únete al grupo' : 'Únete al grupo'}</button>
+    <form id="fu" class="list hidden"><label class="l">Nombre y apellido<input class="f" id="un" autocomplete="name" required></label>
+      <label class="l">Elige un PIN de 4 cifras (lo usarás para entrar)${pinIn('up')}</label>
+      <label class="l">Repite el PIN${pinIn('up2')}</label>
+      <button class="btn pri">Unirme y entrar</button><p id="erru" class="small" style="color:var(--bad)"></p></form>`
+      : deps.length ? '' : '<p class="muted small">Todavía no hay deportistas. Tu entrenador tiene que darte de alta o enviarte el enlace de tu grupo.</p>'}
+    <button class="btn ghost sm" id="vc" type="button">Soy el entrenador →</button>`;
   $('#vc').onclick = () => pantallaAcceso('coach');
-  $('#fd').onsubmit = e => { e.preventDefault(); entrarDep($('#dp').value, $('#pn').value); };
+  const nuevo = () => !!$('#dp').selectedOptions[0]?.dataset.nuevo;
+  $('#dp').onchange = () => { const n = nuevo(); $('#pnL').textContent = n ? 'Es tu primera vez: crea tu PIN (4 cifras)' : 'PIN (4 cifras)'; $('#pn2W').classList.toggle('hidden', !n); $('#pn2').required = n; };
+  $('#pn2').required = false;
+  $('#fd').onsubmit = e => {
+    e.preventDefault();
+    if (nuevo() && $('#pn').value !== $('#pn2').value) return $('#err').textContent = 'Los dos PIN no coinciden.';
+    entrarDep($('#dp').value, $('#pn').value);
+  };
+  if (G) {
+    $('#vu').onclick = () => { $('#fu').classList.toggle('hidden'); $('#un').focus(); };
+    $('#fu').onsubmit = async e => {
+      e.preventDefault();
+      const nombre = $('#un').value.trim(), pin = $('#up').value, err = $('#erru');
+      if (!/^\d{4}$/.test(pin)) return err.textContent = 'El PIN tiene que tener 4 cifras.';
+      if (pin !== $('#up2').value) return err.textContent = 'Los dos PIN no coinciden.';
+      err.textContent = 'Entrando…';
+      try {
+        const j = await api({ a: 'unirse', g: codigoG(), nombre, pin });
+        if (!j.ok) return err.textContent = ({ existe: 'Ya hay alguien con ese nombre. Elígelo en la lista de arriba y escribe tu PIN.', grupo: 'Ese grupo ya no existe.', nombre: 'Escribe tu nombre y apellido.', pin: 'El PIN tiene que tener 4 cifras.' })[j.error] || 'No se pudo completar.';
+        S.lista = null; entrarDep(j.id, pin);
+      } catch (x) { err.textContent = 'No hay conexión.'; }
+    };
+  }
 }
 
 /* ======================================================================
@@ -179,7 +230,7 @@ async function entrarCoach(clave, silencioso) {
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
   }
 }
-const TABS_C = [['dep', 'Deportistas'], ['cal', 'Calendario'], ['planes', 'Planes'], ['bib', 'Biblioteca'], ['carga', 'Carga']];
+const TABS_C = [['dep', 'Deportistas'], ['grupos', 'Grupos'], ['cal', 'Calendario'], ['planes', 'Planes'], ['bib', 'Biblioteca'], ['carga', 'Carga']];
 function marcoCoach() {
   S.tab = S.tab || LS.get('abs2-tab', 'dep');
   document.body.innerHTML = `<header class="hero"><div class="top"><div class="logo">ABS</div><div class="who"><b>Entrenador</b><span id="sync">${esc(S.ui.sync || '')}</span></div><button class="out" id="out">Salir</button></div>
@@ -192,7 +243,7 @@ function marcoCoach() {
 function renderCoach() {
   LS.set('abs2-cache', { modo: 'coach', datos: D });
   const m = $('#main');
-  ({ dep: vDeportistas, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, carga: vCarga })[S.tab](m);
+  ({ dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, carga: vCarga })[S.tab](m);
 }
 
 /* ---------- Deportistas ---------- */
@@ -200,7 +251,7 @@ function vDeportistas(m) {
   const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const arch = D.deportista.filter(d => d.archivado);
   m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
-    ${deps.length ? `<div class="list">${deps.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b><small>${esc([d.grupo, (d.deportes || []).map(x => DEP[x]?.n).join(' · ')].filter(Boolean).join(' · '))}</small></div><span class="chip mono">PIN ${esc(d.pin)}</span></button>`).join('')}</div>` : '<div class="empty">Aún no hay deportistas. Crea el primero para asignarle sesiones o un plan.</div>'}
+    ${deps.length ? `<div class="list">${deps.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b><small>${esc([...(d.grupos || []).map(g => byId('grupo', g)?.nombre), d.grupo, (d.deportes || []).map(x => DEP[x]?.n).join(' · ')].filter(Boolean).join(' · '))}</small></div><span class="chip mono">${d.pin ? 'PIN ' + esc(d.pin) : 'Sin PIN'}</span></button>`).join('')}</div>` : '<div class="empty">Aún no hay deportistas. Crea el primero para asignarle sesiones o un plan.</div>'}
     ${arch.length ? `<details><summary class="muted small">Archivados (${arch.length})</summary><div class="list" style="margin-top:8px">${arch.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b></div></button>`).join('')}</div></details>` : ''}`;
   $('#nd').onclick = () => editDeportista();
   m.querySelectorAll('[data-d]').forEach(b => b.onclick = () => editDeportista(byId('deportista', b.dataset.d)));
@@ -208,23 +259,25 @@ function vDeportistas(m) {
 const ini = n => String(n).trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
 function editDeportista(d) {
   const nuevo = !d;
-  d = d ? clone(d) : { id: uid(), nombre: '', pin: String(Math.floor(1000 + Math.random() * 9000)), deportes: [], grupo: '', notas: '' };
+  d = d ? clone(d) : { id: uid(), nombre: '', pin: String(Math.floor(1000 + Math.random() * 9000)), deportes: [], grupos: S.ui.dep?.startsWith('g:') ? [S.ui.dep.slice(2)] : [], notas: '' };
+  d.grupos = d.grupos || [];
   abrirEd(nuevo ? 'Nuevo deportista' : d.nombre, `
     <div class="card list">
       <label class="l">Nombre y apellido<input class="f" id="dn" value="${esc(d.nombre)}" required></label>
-      <div class="grid2"><label class="l">PIN de acceso (4 cifras)<input class="f mono" id="dpn" value="${esc(d.pin)}" inputmode="numeric" maxlength="4"></label>
-      <label class="l">Grupo<input class="f" id="dg" value="${esc(d.grupo || '')}" placeholder="p. ej. ABS, Infantil, Bomberos" list="grupos"></label></div>
-      <datalist id="grupos">${[...new Set(D.deportista.map(x => x.grupo).filter(Boolean))].map(g => `<option value="${esc(g)}">`).join('')}</datalist>
+      <label class="l">PIN de acceso (4 cifras)<input class="f mono" id="dpn" value="${esc(d.pin || '')}" inputmode="numeric" maxlength="4" style="max-width:160px"><small class="muted">Si lo dejas vacío, lo crea el deportista la primera vez que entra.</small></label>
+      <div class="l">Grupos${D.grupo.length ? `<div class="chips">${gruposOrd().map(g => `<button type="button" class="chip" data-dgr="${g.id}" aria-pressed="${d.grupos.includes(g.id)}"><i style="--c:var(--accent)"></i>${esc(g.nombre)}</button>`).join('')}</div>` : '<small class="muted">Todavía no hay grupos. Créalos en la pestaña Grupos.</small>'}</div>
+      ${d.grupo ? `<p class="small muted">Grupo anotado antes: ${esc(d.grupo)}</p>` : ''}
       <div class="l">Deportes<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-dp="${k}" aria-pressed="${(d.deportes || []).includes(k)}"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
       <label class="l">Notas<textarea class="f" id="dno">${esc(d.notas || '')}</textarea></label>
     </div>
     ${nuevo ? '' : `<div class="row"><button class="btn danger" id="arc">${d.archivado ? 'Recuperar' : 'Archivar'}</button><button class="btn danger" id="del">Borrar deportista y sus sesiones</button></div>`}`,
     () => {
-      d.nombre = $('#dn').value.trim(); d.pin = $('#dpn').value.trim(); d.grupo = $('#dg').value.trim(); d.notas = $('#dno').value;
+      d.nombre = $('#dn').value.trim(); d.pin = $('#dpn').value.trim(); d.notas = $('#dno').value;
       if (!d.nombre) return toast('Falta el nombre'), false;
-      if (!/^\d{4}$/.test(d.pin)) return toast('El PIN debe tener 4 cifras'), false;
+      if (d.pin && !/^\d{4}$/.test(d.pin)) return toast('El PIN debe tener 4 cifras'), false;
       guardar([{ tipo: 'deportista', doc: d }]); renderCoach();
     });
+  document.querySelectorAll('[data-dgr]').forEach(b => b.onclick = () => { const k = b.dataset.dgr; const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); d.grupos = on ? [...new Set([...d.grupos, k])] : d.grupos.filter(x => x !== k); });
   document.querySelectorAll('[data-dp]').forEach(b => b.onclick = () => { const k = b.dataset.dp; const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); d.deportes = on ? [...new Set([...(d.deportes || []), k])] : d.deportes.filter(x => x !== k); });
   if (!nuevo) {
     $('#arc').onclick = () => { d.archivado = !d.archivado; guardar([{ tipo: 'deportista', doc: d }]); cerrarEd(); renderCoach(); };
@@ -236,22 +289,92 @@ function editDeportista(d) {
   }
 }
 
+/* ---------- Grupos ---------- */
+const enlaceG = g => `${location.origin}${location.pathname.replace(/index\.html$/, '')}?g=${encodeURIComponent(g.codigo)}`;
+function codigoNuevo(nombre) {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const base = norm(nombre || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  let c = base.length >= 3 && !D.grupo.some(g => g.codigo === base) ? base : '';
+  while (!c || D.grupo.some(g => g.codigo === c)) c = Array.from({ length: 6 }, () => A[Math.floor(Math.random() * A.length)]).join('');
+  return c;
+}
+async function copiarEnlace(g) {
+  const url = enlaceG(g);
+  try { await navigator.clipboard.writeText(url); toast('Enlace copiado'); }
+  catch (e) { const i = document.querySelector(`[data-gl="${g.id}"]`); if (i) { i.select(); toast('Copia el enlace seleccionado'); } }
+}
+function vGrupos(m) {
+  const gs = gruposOrd();
+  m.innerHTML = `<div class="row"><h2 class="grow">Grupos</h2><button class="btn pri" id="ng">+ Nuevo grupo</button></div>
+    <p class="muted small" style="margin-top:0">Todo el grupo recibe el mismo entrenamiento. Envía su enlace por WhatsApp: cada persona entra con su nombre y su PIN, y registra sus propios kilos, RPE y comentarios. Quien no esté en la lista puede unirse desde el enlace.</p>
+    ${gs.length ? `<div class="list">${gs.map(g => { const n = miembros(g).length, ns = D.sesion.filter(x => x.grupo === g.id).length; return `<div class="card list">
+      <div class="row"><div class="avatar">${esc(ini(g.nombre))}</div><div class="grow"><b>${esc(g.nombre)}</b><div class="small muted">${n} ${n === 1 ? 'persona' : 'personas'} · ${ns} ${ns === 1 ? 'sesión' : 'sesiones'} · código <span class="mono">${esc(g.codigo)}</span></div></div><button class="btn sm" data-ge="${g.id}">Editar</button></div>
+      <div class="row"><input class="f mono grow" readonly value="${esc(enlaceG(g))}" aria-label="Enlace del grupo ${esc(g.nombre)}" data-gl="${g.id}" style="min-width:0"><button class="btn sm pri" data-gc="${g.id}">Copiar enlace</button>${navigator.share ? `<button class="btn sm" data-gs="${g.id}">Compartir</button>` : ''}<button class="btn sm ghost" data-gk="${g.id}">Calendario</button></div></div>`; }).join('')}</div>`
+      : '<div class="empty">Aún no hay grupos. Crea uno, asígnale un plan o sesiones y envía el enlace.</div>'}`;
+  $('#ng').onclick = () => editGrupo();
+  m.querySelectorAll('[data-ge]').forEach(b => b.onclick = () => editGrupo(byId('grupo', b.dataset.ge)));
+  m.querySelectorAll('[data-gc]').forEach(b => b.onclick = () => copiarEnlace(byId('grupo', b.dataset.gc)));
+  m.querySelectorAll('[data-gs]').forEach(b => b.onclick = () => { const g = byId('grupo', b.dataset.gs); navigator.share({ title: g.nombre, text: `Entrenamiento de ${g.nombre}: entra con tu nombre y tu PIN`, url: enlaceG(g) }).catch(() => {}); });
+  m.querySelectorAll('[data-gk]').forEach(b => b.onclick = () => { S.ui.dep = 'g:' + b.dataset.gk; S.tab = 'cal'; LS.set('abs2-tab', 'cal'); marcoCoach(); });
+  m.querySelectorAll('[data-gl]').forEach(i => i.onfocus = () => i.select());
+}
+function editGrupo(g) {
+  const nuevo = !g;
+  g = g ? clone(g) : { id: uid(), nombre: '', codigo: '', deportes: [], notas: '' };
+  const antes = new Set(miembros(byId('grupo', g.id)).map(d => d.id)), sel = new Set(antes);
+  abrirEd(nuevo ? 'Nuevo grupo' : g.nombre, `<div class="card list">
+      <label class="l">Nombre del grupo<input class="f" id="gn" value="${esc(g.nombre)}" placeholder="p. ej. Preparación física CDNS" required></label>
+      <label class="l">Código del enlace<input class="f mono" id="gc" value="${esc(g.codigo)}" placeholder="Se crea solo" maxlength="12" style="max-width:200px;text-transform:uppercase"><small class="muted">Va al final del enlace (…?g=CÓDIGO). Si lo cambias, el enlace anterior deja de funcionar.</small></label>
+      <div class="l">Deportes<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-gdp="${k}" aria-pressed="${(g.deportes || []).includes(k)}"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
+      <div class="l">Personas del grupo${depsOrd().length ? `<div class="chips">${depsOrd().map(d => `<button type="button" class="chip" data-gm="${d.id}" aria-pressed="${sel.has(d.id)}">${esc(d.nombre)}</button>`).join('')}</div>` : ''}<small class="muted">También se apuntan solas al entrar con el enlace.</small></div>
+      <label class="l">Notas<textarea class="f" id="gno">${esc(g.notas || '')}</textarea></label></div>
+    ${nuevo ? '' : '<button class="btn danger" id="delg">Borrar grupo y sus sesiones</button>'}`,
+    () => {
+      g.nombre = $('#gn').value.trim();
+      if (!g.nombre) return toast('Falta el nombre'), false;
+      const c = $('#gc').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (c && c.length < 3) return toast('El código necesita al menos 3 letras o números'), false;
+      if (c && D.grupo.some(x => x.id !== g.id && x.codigo === c)) return toast('Ese código ya lo usa otro grupo'), false;
+      g.codigo = c || codigoNuevo(g.nombre); g.notas = $('#gno').value;
+      const docs = [{ tipo: 'grupo', doc: g }];
+      D.deportista.forEach(d => {
+        const tenia = (d.grupos || []).includes(g.id), tiene = sel.has(d.id);
+        if (tenia !== tiene) docs.push({ tipo: 'deportista', doc: { ...d, grupos: tiene ? [...(d.grupos || []), g.id] : d.grupos.filter(x => x !== g.id) } });
+      });
+      guardar(docs); renderCoach();
+      if (nuevo) toast('Grupo creado: copia su enlace y envíalo');
+    });
+  document.querySelectorAll('[data-gdp]').forEach(b => b.onclick = () => { const k = b.dataset.gdp; const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); g.deportes = on ? [...new Set([...(g.deportes || []), k])] : g.deportes.filter(x => x !== k); });
+  document.querySelectorAll('[data-gm]').forEach(b => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); on ? sel.add(b.dataset.gm) : sel.delete(b.dataset.gm); });
+  if (!nuevo) $('#delg').onclick = () => {
+    const ses = D.sesion.filter(x => x.grupo === g.id);
+    if (!confirm(`¿Borrar el grupo "${g.nombre}", sus ${ses.length} sesiones y lo que registraron en ellas? Las personas no se borran. No se puede deshacer.`)) return;
+    const ids = new Set(ses.map(x => x.id));
+    borrar([{ tipo: 'grupo', id: g.id }, ...ses.map(x => ({ tipo: 'sesion', id: x.id })), ...D.registro.filter(r => ids.has(r.ses)).map(r => ({ tipo: 'registro', id: r.id }))]);
+    const docs = D.deportista.filter(d => (d.grupos || []).includes(g.id)).map(d => ({ tipo: 'deportista', doc: { ...d, grupos: d.grupos.filter(x => x !== g.id) } }));
+    if (docs.length) guardar(docs);
+    if (S.ui.dep === 'g:' + g.id) S.ui.dep = null;
+    cerrarEd(); renderCoach();
+  };
+}
+
 /* ---------- Calendario ---------- */
 function selDep(id) {
-  const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  return `<select class="f" id="${id}" style="max-width:280px">${deps.map(d => `<option value="${d.id}" ${d.id === S.ui.dep ? 'selected' : ''}>${esc(d.nombre)}</option>`).join('')}</select>`;
+  const gs = gruposOrd(), ds = depsOrd();
+  const op = (k, n) => `<option value="${k}" ${k === S.ui.dep ? 'selected' : ''}>${esc(n)}</option>`;
+  return `<select class="f" id="${id}" style="max-width:300px" aria-label="Grupo o deportista">${gs.length ? `<optgroup label="Grupos">${gs.map(g => op('g:' + g.id, g.nombre)).join('')}</optgroup>` : ''}<optgroup label="Deportistas">${ds.map(d => op(d.id, d.nombre)).join('')}</optgroup></select>`;
 }
 function vCalendario(m) {
-  const deps = D.deportista.filter(d => !d.archivado);
-  if (!deps.length) { m.innerHTML = '<div class="empty">Primero crea un deportista en la pestaña Deportistas.</div>'; return; }
-  if (!S.ui.dep || !byId('deportista', S.ui.dep)) S.ui.dep = deps[0].id;
+  const ds = destinos();
+  if (!ds.length) { m.innerHTML = '<div class="empty">Primero crea un grupo o un deportista.</div>'; return; }
+  if (!quien(S.ui.dep)) S.ui.dep = ds[0].k;
   S.ui.semana = S.ui.semana || key(monday(new Date()));
-  const lun = parseKey(S.ui.semana), dep = byId('deportista', S.ui.dep);
-  const ses = D.sesion.filter(s => s.dep === dep.id);
-  const fin = addDays(lun, 6);
-  const semUA = ses.filter(s => s.fecha >= key(lun) && s.fecha <= key(fin)).reduce((a, s) => a + ua(byId('registro', s.id)), 0);
-  m.innerHTML = `<div class="row">${selDep('cd')}<div class="row grow" style="justify-content:flex-end"><button class="btn sm" id="ap">Asignar plan</button><button class="btn sm" id="cs">Copiar semana a…</button></div></div>
-    <div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(fin)}</b><span>Carga registrada: ${semUA} UA</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
+  const lun = parseKey(S.ui.semana), Q = quien(S.ui.dep);
+  const ses = D.sesion.filter(Q.filtro);
+  const fin = addDays(lun, 6), deSemana = ses.filter(s => s.fecha >= key(lun) && s.fecha <= key(fin));
+  const resumen = Q.grupo ? `${miembros(Q.grupo).length} personas · ${deSemana.length} ${deSemana.length === 1 ? 'sesión' : 'sesiones'}` : `Carga registrada: ${deSemana.reduce((a, s) => a + ua(byId('registro', s.id)), 0)} UA`;
+  m.innerHTML = `<div class="row">${selDep('cd')}<div class="row grow" style="justify-content:flex-end">${Q.grupo ? '<button class="btn sm" id="ce">Copiar enlace</button>' : ''}<button class="btn sm" id="ap">Asignar plan</button><button class="btn sm" id="cs">Copiar semana a…</button></div></div>
+    <div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(fin)}</b><span>${resumen}</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
     <div class="week">${[0, 1, 2, 3, 4, 5, 6].map(i => {
       const d = addDays(lun, i), k = key(d), lista = ses.filter(s => s.fecha === k);
       return `<div class="wday ${k === key(today()) ? 'today' : ''}"><div class="dh"><span>${DIAS[i]}</span><b>${d.getDate()}</b></div>
@@ -261,18 +384,21 @@ function vCalendario(m) {
   $('#pw').onclick = () => { S.ui.semana = key(addDays(lun, -7)); renderCoach(); };
   $('#nw').onclick = () => { S.ui.semana = key(addDays(lun, 7)); renderCoach(); };
   $('#ap').onclick = () => asignarPlan();
-  $('#cs').onclick = () => copiarSemana(lun, dep);
+  $('#cs').onclick = () => copiarSemana(lun, Q);
+  const ce = $('#ce'); if (ce) ce.onclick = () => copiarEnlace(Q.grupo);
   m.querySelectorAll('[data-add]').forEach(b => b.onclick = () => nuevaSesion(b.dataset.add));
   m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => editSesion(byId('sesion', b.dataset.s)));
 }
 function scard(s, plan) {
-  const r = plan ? null : byId('registro', s.id);
-  return `<button class="scard" style="--c:${DEP[s.deporte]?.c || 'var(--muted)'}" data-s="${s.id}" ${plan ? `data-ps="${s.id}"` : ''}><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b><small>${esc(DEP[s.deporte]?.n || '')}${s.duracion ? ` · ${s.duracion}'` : ''}</small>${r && r.rpe ? `<small class="ok">✓ RPE ${r.rpe} · ${ua(r)} UA</small>` : ''}</button>`;
+  const dep = S.auth?.modo === 'dep';
+  const r = plan ? null : dep ? regDe(s) : s.grupo ? null : byId('registro', s.id);
+  const nReg = !plan && !dep && s.grupo ? D.registro.filter(x => x.ses === s.id && (ua(x) || Object.values(x.sets || {}).some(v => v.ok || v.kg))).length : 0;
+  return `<button class="scard" style="--c:${DEP[s.deporte]?.c || 'var(--muted)'}" data-s="${s.id}" ${plan ? `data-ps="${s.id}"` : ''}><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b><small>${esc(DEP[s.deporte]?.n || '')}${s.duracion ? ` · ${s.duracion}'` : ''}</small>${r && r.rpe ? `<small class="ok">✓ RPE ${r.rpe} · ${ua(r)} UA</small>` : ''}${nReg ? `<small class="ok">✓ ${nReg} de ${miembros(byId('grupo', s.grupo)).length} han registrado</small>` : ''}</button>`;
 }
 function nuevaSesion(fecha) {
-  const dep = byId('deportista', S.ui.dep);
+  const Q = quien(S.ui.dep), dep = Q.dep || Q.grupo;
   const tipos = dep.deportes?.length ? dep.deportes : Object.keys(DEP);
-  abrirEd('Nueva sesión', `<div class="card list"><p class="muted">${fmtLong(parseKey(fecha))} · ${esc(dep.nombre)}</p>
+  abrirEd('Nueva sesión', `<div class="card list"><p class="muted">${fmtLong(parseKey(fecha))} · ${Q.grupo ? 'Grupo ' : ''}${esc(dep.nombre)}</p>
     <div class="l">Deporte<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-nd="${k}" aria-pressed="${k === tipos[0]}"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
     <label class="l">O copia una sesión de un plan<select class="f" id="dePlan"><option value="">Sesión en blanco</option>${D.plan.map(p => `<optgroup label="${esc(p.nombre)}">${(p.sesiones || []).map(s => `<option value="${p.id}|${s.id}">S${s.semana} ${DIAS[s.dia - 1]} · ${esc(s.titulo || DEP[s.deporte]?.n)}</option>`).join('')}</optgroup>`).join('')}</select></label></div>`,
     () => {
@@ -280,14 +406,13 @@ function nuevaSesion(fecha) {
       let s;
       if (v) { const [pid, sid] = v.split('|'); s = clone(byId('plan', pid).sesiones.find(x => x.id === sid)); delete s.semana; delete s.dia; }
       else s = { titulo: '', deporte: document.querySelector('[data-nd][aria-pressed="true"]').dataset.nd, duracion: '', bloques: [] };
-      Object.assign(s, { id: uid(), dep: dep.id, fecha });
+      delete s.dep; delete s.grupo; Object.assign(s, { id: uid(), ...Q.asig, fecha });
       setTimeout(() => editSesion(s, true), 0);
     }, 'Continuar');
   document.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => document.querySelectorAll('[data-nd]').forEach(x => x.setAttribute('aria-pressed', x === b)));
 }
 function asignarPlan() {
   if (!D.plan.length) return toast('Todavía no hay planes. Créalos en la pestaña Planes.');
-  const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   abrirEd('Asignar plan', `<div class="card list">
     <label class="l">Plan<select class="f" id="apl">${D.plan.map(p => `<option value="${p.id}">${esc(p.nombre)} · ${p.semanas} sem.</option>`).join('')}</select></label>
     <label class="l">Empieza el lunes<input class="f" type="date" id="afe" value="${key(monday(addDays(new Date(), 7)))}"></label>
@@ -295,18 +420,18 @@ function asignarPlan() {
     <label class="l hidden" id="wSem">Empieza en la semana del plan<select class="f" id="asem"></select></label>
     <label class="l hidden" id="wExa">Fecha del examen<input class="f" type="date" id="aex"></label>
     <p class="small" id="ares"></p>
-    <div class="l">Deportistas<div class="chips">${deps.map(d => `<button type="button" class="chip" data-ad="${d.id}" aria-pressed="${d.id === S.ui.dep}">${esc(d.nombre)}</button>`).join('')}</div></div>
-    <p class="small muted">Se crean las sesiones en el calendario de cada deportista. Si el aspirante tiene menos semanas que el plan, se usan las últimas semanas del plan, para que la puesta a punto caiga justo antes del examen.</p></div>`,
+    ${chipsDestinos('data-ad', S.ui.dep)}
+    <p class="small muted">Se crean las sesiones en el calendario de cada grupo o deportista elegido (en un grupo, una sola vez para todos). Si el aspirante tiene menos semanas que el plan, se usan las últimas semanas del plan, para que la puesta a punto caiga justo antes del examen.</p></div>`,
     () => {
       const r = calc(); if (!r) return false;
       const sel = [...document.querySelectorAll('[data-ad][aria-pressed="true"]')].map(b => b.dataset.ad);
-      if (!sel.length) return toast('Elige al menos un deportista'), false;
+      if (!sel.length) return toast('Elige al menos un grupo o deportista'), false;
       const docs = [];
-      sel.forEach(depId => (r.p.sesiones || []).filter(s => s.semana >= r.desde).forEach(s => {
+      sel.forEach(k => (r.p.sesiones || []).filter(s => s.semana >= r.desde).forEach(s => {
         const f = addDays(r.ini, (s.semana - r.desde) * 7 + (s.dia - 1));
         if (r.hasta && key(f) > r.hasta) return;
         const n = clone(s); delete n.semana; delete n.dia;
-        Object.assign(n, { id: uid(), dep: depId, fecha: key(f), plan: { id: r.p.id, semana: s.semana, dia: s.dia } });
+        Object.assign(n, { id: uid(), ...quien(k).asig, fecha: key(f), plan: { id: r.p.id, semana: s.semana, dia: s.dia } });
         docs.push({ tipo: 'sesion', doc: n });
       }));
       if (!docs.length) return toast('No queda ninguna sesión con esas fechas'), false;
@@ -334,19 +459,18 @@ function asignarPlan() {
   llenar();
   document.querySelectorAll('[data-ad]').forEach(b => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
 }
-function copiarSemana(lun, dep) {
-  const fin = key(addDays(lun, 6)), ses = D.sesion.filter(s => s.dep === dep.id && s.fecha >= key(lun) && s.fecha <= fin);
+function copiarSemana(lun, Q) {
+  const fin = key(addDays(lun, 6)), ses = D.sesion.filter(s => Q.filtro(s) && s.fecha >= key(lun) && s.fecha <= fin);
   if (!ses.length) return toast('Esta semana no tiene sesiones');
-  const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  abrirEd('Copiar semana', `<div class="card list"><p class="muted">${ses.length} sesiones de ${esc(dep.nombre)} (${fmtD(lun)} – ${fmtD(addDays(lun, 6))})</p>
+  abrirEd('Copiar semana', `<div class="card list"><p class="muted">${ses.length} sesiones de ${esc(Q.nombre)} (${fmtD(lun)} – ${fmtD(addDays(lun, 6))})</p>
     <label class="l">A la semana que empieza el lunes<input class="f" type="date" id="cfe" value="${key(lun)}"></label>
-    <div class="l">Deportistas<div class="chips">${deps.map(d => `<button type="button" class="chip" data-cd="${d.id}" aria-pressed="false">${esc(d.nombre)}</button>`).join('')}</div></div></div>`,
+    ${chipsDestinos('data-cd', '')}</div>`,
     () => {
       const dest = monday(parseKey($('#cfe').value)), off = Math.round((dest - lun) / 864e5);
       const sel = [...document.querySelectorAll('[data-cd][aria-pressed="true"]')].map(b => b.dataset.cd);
-      if (!sel.length) return toast('Elige al menos un deportista'), false;
+      if (!sel.length) return toast('Elige al menos un grupo o deportista'), false;
       const docs = [];
-      sel.forEach(id => ses.forEach(s => { const n = clone(s); Object.assign(n, { id: uid(), dep: id, fecha: key(addDays(parseKey(s.fecha), off)) }); docs.push({ tipo: 'sesion', doc: n }); }));
+      sel.forEach(k => ses.forEach(s => { const n = clone(s); delete n.dep; delete n.grupo; Object.assign(n, { id: uid(), ...quien(k).asig, fecha: key(addDays(parseKey(s.fecha), off)) }); docs.push({ tipo: 'sesion', doc: n }); }));
       guardar(docs); renderCoach(); toast(`${docs.length} sesiones copiadas`);
     }, 'Copiar');
   document.querySelectorAll('[data-cd]').forEach(b => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
@@ -355,28 +479,31 @@ function copiarSemana(lun, dep) {
 /* ---------- Editor de sesión (sirve para calendario y planes) ---------- */
 function editSesion(s, nueva, enPlan) {
   s = clone(s); s.bloques = s.bloques || [];
-  const dep = enPlan ? null : byId('deportista', s.dep);
+  const dep = enPlan ? null : s.grupo ? byId('grupo', s.grupo) : byId('deportista', s.dep);
   const pintar = () => {
     const c = DEP[s.deporte]?.c;
     $('#edBody').innerHTML = `
       <div class="card list">
-        ${enPlan ? `<p class="muted small">Plan: ${esc(enPlan.nombre)} · Semana ${s.semana} · ${DIAS[s.dia - 1]}</p>` : `<p class="muted small">${esc(dep?.nombre || '')} · ${fmtLong(parseKey(s.fecha))}</p>`}
+        ${enPlan ? `<p class="muted small">Plan: ${esc(enPlan.nombre)} · Semana ${s.semana} · ${DIAS[s.dia - 1]}</p>` : `<p class="muted small">${s.grupo ? 'Grupo ' : ''}${esc(dep?.nombre || '')} · ${fmtLong(parseKey(s.fecha))}</p>`}
         <div class="grid2"><label class="l">Título<input class="f" data-k="titulo" value="${esc(s.titulo)}" placeholder="p. ej. Fuerza · Día 1"></label>
         <label class="l">Deporte<select class="f" data-k="deporte">${Object.entries(DEP).map(([k, v]) => `<option value="${k}" ${k === s.deporte ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label>
         ${enPlan ? `<label class="l">Semana<input class="f" type="number" min="1" max="${enPlan.semanas}" data-k="semana" value="${s.semana}"></label><label class="l">Día<select class="f" data-k="dia">${DIAS.map((d, i) => `<option value="${i + 1}" ${i + 1 == s.dia ? 'selected' : ''}>${d}</option>`).join('')}</select></label>` : `<label class="l">Fecha<input class="f" type="date" data-k="fecha" value="${s.fecha}"></label>`}
         <label class="l">Duración prevista (min)<input class="f" type="number" min="0" data-k="duracion" value="${esc(s.duracion)}"></label>
-        <label class="l">RPE objetivo<input class="f" data-k="rpeObj" value="${esc(s.rpeObj || '')}" placeholder="p. ej. 6–7"></label></div>
+        <label class="l">RPE objetivo<input class="f" data-k="rpeObj" value="${esc(s.rpeObj || '')}" placeholder="p. ej. 6–7"></label>
+        <label class="l">Subtítulo<input class="f" data-k="subtitulo" value="${esc(s.subtitulo || '')}" placeholder="p. ej. Semana 1 · Base"></label></div>
         <label class="l">Notas para el deportista<textarea class="f" data-k="notas">${esc(s.notas || '')}</textarea></label>
       </div>
       ${s.bloques.map((b, bi) => `<div class="eblock" style="--c:${c}">
         <div class="row"><input class="f grow" data-b="${bi}" data-bk="nombre" value="${esc(b.nombre)}" placeholder="Nombre del bloque" style="font-weight:700">
         ${s.deporte === 'fuerza' ? `<label class="l" style="width:90px">Series<input class="f" type="number" min="1" data-b="${bi}" data-bk="series" value="${esc(b.series || '')}"></label>` : ''}
+        <label class="l" style="width:80px">Tiempo<input class="f" data-b="${bi}" data-bk="tiempo" value="${esc(b.tiempo || '')}" placeholder="10'"></label>
         <span class="chip">${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}</span><button class="icon" data-mb="${bi}|-1" aria-label="Subir bloque">↑</button><button class="icon" data-mb="${bi}|1" aria-label="Bajar bloque">↓</button><button class="icon" data-db="${bi}" aria-label="Borrar bloque">✕</button></div>
         ${(b.items || []).map((it, ii) => itemEd(s.deporte, bi, ii, it)).join('')}
         <div class="row"><button class="btn sm" data-ai="${bi}">+ Desde la biblioteca</button><button class="btn sm ghost" data-ab="${bi}">+ Línea libre</button></div>
       </div>`).join('')}
       <div class="row"><button class="btn" id="nb">+ Añadir bloque</button>${s.deporte === 'fuerza' ? '<button class="btn ghost" id="nbF">+ Estructura de fuerza (warm up, activación, saltos y pliometría, fuerza 1, fuerza 2, accesorios)</button>' : ''}</div>
-      ${nueva ? '' : `<div class="row"><button class="btn sm" id="dup">Duplicar</button><button class="btn sm danger" id="dels">Borrar sesión</button></div>`}`;
+      ${nueva ? '' : `<div class="row"><button class="btn sm" id="dup">Duplicar</button><button class="btn sm danger" id="dels">Borrar sesión</button></div>`}
+      ${nueva || enPlan ? '' : resultados(s)}`;
     enlazar();
   };
   const leer = () => {
@@ -399,7 +526,7 @@ function editSesion(s, nueva, enPlan) {
     const dels = $('#dels'); if (dels) dels.onclick = () => {
       if (!confirm('¿Borrar esta sesión?')) return;
       if (enPlan) { enPlan.sesiones = enPlan.sesiones.filter(x => x.id !== s.id); guardar([{ tipo: 'plan', doc: enPlan }]); }
-      else borrar([{ tipo: 'sesion', id: s.id }]);
+      else borrar([{ tipo: 'sesion', id: s.id }, ...D.registro.filter(r => r.ses === s.id).map(r => ({ tipo: 'registro', id: r.id }))]);
       cerrarEd(); renderCoach();
     };
   };
@@ -411,6 +538,26 @@ function editSesion(s, nueva, enPlan) {
     renderCoach();
   });
   pintar();
+}
+// Lo que ha registrado cada persona en una sesión (vista del entrenador)
+function resultados(s) {
+  const gente = s.grupo ? miembros(byId('grupo', s.grupo)) : [byId('deportista', s.dep)].filter(Boolean);
+  if (!gente.length) return '';
+  const regDep = d => s.grupo ? D.registro.find(r => r.ses === s.id && r.dep === d.id) : byId('registro', s.id);
+  const conAlgo = r => r && (ua(r) || Object.values(r.sets || {}).some(v => v.ok || v.kg) || Object.values(r.hecho || {}).some(Boolean) || Object.values(r.coment || {}).some(Boolean) || r.nota);
+  const n = gente.filter(d => conAlgo(regDep(d))).length;
+  const filas = gente.map(d => {
+    const r = regDep(d);
+    if (!conAlgo(r)) return `<div class="row"><b class="grow">${esc(d.nombre)}</b><small class="muted">Sin registrar</small></div>`;
+    const ejs = [];
+    (s.bloques || []).forEach((b, bi) => (b.items || []).forEach((it, ii) => {
+      const kg = Object.entries(r.sets || {}).filter(([k, v]) => k.startsWith(`${bi}|${ii}|`) && v.kg).sort((x, y) => +x[0].split('|')[2] - +y[0].split('|')[2]).map(([, v]) => v.kg);
+      const c = r.coment?.[`${bi}|${ii}`];
+      if (kg.length || c) ejs.push(`<li>${esc(it.nombre)}${kg.length ? `: <span class="mono">${esc(kg.join(' · '))} kg</span>` : ''}${c ? ` <i class="muted">«${esc(c)}»</i>` : ''}</li>`);
+    }));
+    return `<div><div class="row"><b class="grow">${esc(d.nombre)}</b>${r.rpe !== undefined && r.rpe !== '' ? `<span class="chip mono">RPE ${esc(r.rpe)} · ${esc(r.minutos || 0)}' · ${ua(r)} UA</span>` : '<small class="muted">Sin RPE</small>'}</div>${ejs.length ? `<ul class="small" style="margin:4px 0 0;padding-left:18px">${ejs.join('')}</ul>` : ''}${r.nota ? `<p class="small muted" style="margin:4px 0 0">«${esc(r.nota)}»</p>` : ''}</div>`;
+  }).join('');
+  return `<details class="card" ${n ? 'open' : ''}><summary><b>Registros</b> <span class="small muted">· ${n} de ${gente.length}</span></summary><div class="list" style="margin-top:10px">${filas}</div></details>`;
 }
 function itemDesde(ej) {
   const it = { id: uid(), ej: ej.id, nombre: ej.nombre, video: ej.video || '' };
@@ -509,7 +656,7 @@ function editEjercicio(e, nuevo) {
     <datalist id="cats">${(CATS[e.deporte] || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist>
     <label class="l">Vídeo de YouTube (máximo 10 s, solo la ejecución)<input class="f" id="ev" value="${esc(e.video || '')}" placeholder="https://www.youtube.com/shorts/…"></label>
     <p class="small" id="evDur">${e.video && !vidId(e.video) ? '⚠ No es un enlace de YouTube.' : e.dur ? `Duración: ${e.dur} s ${e.dur <= 10 ? '✓' : '· ⚠ supera los 10 s'}` : ''}</p>
-    ${vidId(e.video) ? `<button type="button" class="thumb" data-v="${vidId(e.video)}" data-n="${esc(e.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${vidId(e.video)}/hqdefault.jpg" alt=""><span>${PLAY}</span></button>` : ''}
+    ${vidId(e.video) ? `<button type="button" class="thumb" ${tramo(e.video)} data-n="${esc(e.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${vidId(e.video)}/hqdefault.jpg" alt=""><span>${PLAY}</span></button>` : ''}
     <label class="l">${e.deporte === 'fuerza' ? 'Indicaciones de ejecución' : 'Descripción de la tarea (texto tal cual)'}<textarea class="f ${e.deporte === 'fuerza' ? '' : 'mono'}" id="et" rows="5">${esc(e.texto || '')}</textarea></label>
     <label class="l">Fuente<input class="f" id="ef" value="${esc(e.fuente || '')}" placeholder="p. ej. @swimcoachjj, 19/10/26"></label>
     <div class="l">Valores por defecto al añadirlo a una sesión<div class="grid2">${(CAMPOS[e.deporte] || CAMPOS.otro).map(([k, n]) => `<label class="l">${n}<input class="f" data-df="${k}" value="${esc(e.def[k] || '')}"></label>`).join('')}</div></div></div>
@@ -518,7 +665,7 @@ function editEjercicio(e, nuevo) {
   abrirEd(nuevo ? 'Nuevo ejercicio' : e.nombre, pinta(), () => { leer(); if (!e.nombre) return toast('Falta el nombre'), false; if (e.video && !vidId(e.video)) return toast('El vídeo tiene que ser un enlace de YouTube'), false; if (e.dur > 10) return toast(`El vídeo dura ${e.dur} s: elige uno de 10 s o menos`), false; guardar([{ tipo: 'ejercicio', doc: e }]); renderCoach(); });
   const enl = () => {
     $('#ed2').onchange = () => { leer(); $('#edBody').innerHTML = pinta(); enl(); };
-    $('#ev').onchange = async () => { leer(); delete e.dur; $('#edBody').innerHTML = pinta(); enl(); const v = vidId(e.video); if (!v) return; $('#evDur').textContent = 'Comprobando la duración…'; const d = await duracionYT(v); if (vidId(e.video) !== v) return; if (d) e.dur = d; $('#evDur').textContent = d ? `Duración: ${d} s ${d <= 10 ? '✓' : '· ⚠ supera los 10 s: elige otro vídeo'}` : 'No se pudo comprobar la duración.'; };
+    $('#ev').onchange = async () => { leer(); delete e.dur; $('#edBody').innerHTML = pinta(); enl(); const v = vidId(e.video); if (!v) return; const c = clip(e.video); if (c.e > c.s) { e.dur = c.e - c.s; $('#evDur').textContent = `Tramo de ${e.dur} s ${e.dur <= 10 ? '✓' : '· ⚠ supera los 10 s'}`; return; } $('#evDur').textContent = 'Comprobando la duración…'; const d = await duracionYT(v); if (vidId(e.video) !== v) return; if (d) e.dur = d; $('#evDur').textContent = d ? `Duración: ${d} s ${d <= 10 ? '✓' : '· ⚠ supera los 10 s: elige otro vídeo'}` : 'No se pudo comprobar la duración.'; };
     const d = $('#dele'); if (d) d.onclick = () => { if (confirm('¿Borrar este ejercicio de la biblioteca? Las sesiones que ya lo usan no cambian.')) { borrar([{ tipo: 'ejercicio', id: e.id }]); cerrarEd(); renderCoach(); } };
   };
   enl();
@@ -528,7 +675,7 @@ function editEjercicio(e, nuevo) {
 const ua = r => r && r.rpe && r.minutos ? Math.round(+r.rpe * +r.minutos) : 0;
 function cargaPorDia(depId) {
   const m = {};
-  D.registro.filter(r => (r.dep || S.yo?.id) === depId && ua(r)).forEach(r => { const f = r.fecha || byId('sesion', r.id)?.fecha; if (f) m[f] = (m[f] || 0) + ua(r); });
+  D.registro.filter(r => (r.dep || S.yo?.id) === depId && ua(r)).forEach(r => { const f = r.fecha || byId('sesion', r.ses || r.id)?.fecha; if (f) m[f] = (m[f] || 0) + ua(r); });
   return m;
 }
 function semanas(porDia, n, hasta) {
@@ -537,21 +684,24 @@ function semanas(porDia, n, hasta) {
   return out;
 }
 function vCarga(m) {
-  const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  if (!deps.length) { m.innerHTML = '<div class="empty">No hay deportistas.</div>'; return; }
+  if (S.ui.cargaG && !byId('grupo', S.ui.cargaG)) S.ui.cargaG = '';
+  const deps = S.ui.cargaG ? miembros(byId('grupo', S.ui.cargaG)) : depsOrd();
+  if (!depsOrd().length) { m.innerHTML = '<div class="empty">No hay deportistas.</div>'; return; }
   if (S.ui.cargaDep && byId('deportista', S.ui.cargaDep)) return vCargaDep(m, byId('deportista', S.ui.cargaDep));
   const filas = deps.map(d => { const w = semanas(cargaPorDia(d.id), 2); return { d, ant: w[0].t, act: w[1].t }; });
   m.innerHTML = `<h2>Carga de entrenamiento</h2><p class="muted small">sRPE = RPE de la sesión × minutos. Lo registra cada deportista al terminar.</p>
+    ${D.grupo.length ? `<div class="chips"><button class="chip" data-cgg="" aria-pressed="${!S.ui.cargaG}">Todos</button>${gruposOrd().map(g => `<button class="chip" data-cgg="${g.id}" aria-pressed="${S.ui.cargaG === g.id}"><i style="--c:var(--accent)"></i>${esc(g.nombre)}</button>`).join('')}</div>` : ''}
     <div class="card scroll"><table class="data"><thead><tr><th>Deportista</th><th class="n">Semana pasada (UA)</th><th class="n">Esta semana (UA)</th><th class="n">Cambio</th></tr></thead><tbody>
     ${filas.map(f => `<tr><td><button class="btn ghost sm" data-cg="${f.d.id}">${esc(f.d.nombre)}</button></td><td class="n">${f.ant}</td><td class="n">${f.act}</td><td class="n">${f.ant ? (f.act >= f.ant ? '+' : '') + Math.round((f.act - f.ant) / f.ant * 100) + ' %' : '—'}</td></tr>`).join('')}</tbody></table></div>`;
   m.querySelectorAll('[data-cg]').forEach(b => b.onclick = () => { S.ui.cargaDep = b.dataset.cg; renderCoach(); });
+  m.querySelectorAll('[data-cgg]').forEach(b => b.onclick = () => { S.ui.cargaG = b.dataset.cgg; renderCoach(); });
 }
 function vCargaDep(m, dep, propio) {
   const porDia = cargaPorDia(dep.id);
   const sem = semanas(porDia, 8);
   const lun = monday(new Date());
   const dias = Array.from({ length: 28 }, (_, i) => { const d = addDays(lun, -21 + i); return { d, t: porDia[key(d)] || 0 }; });
-  const regs = D.registro.filter(r => (r.dep || S.yo?.id) === dep.id && ua(r)).map(r => ({ r, s: byId('sesion', r.id) })).sort((a, b) => (b.r.fecha || '').localeCompare(a.r.fecha || '')).slice(0, 40);
+  const regs = D.registro.filter(r => (r.dep || S.yo?.id) === dep.id && ua(r)).map(r => ({ r, s: byId('sesion', r.ses || r.id) })).sort((a, b) => (b.r.fecha || '').localeCompare(a.r.fecha || '')).slice(0, 40);
   const act = sem[7].t, ant = sem[6].t, media4 = Math.round((sem[3].t + sem[4].t + sem[5].t + sem[6].t) / 4);
   m.innerHTML = `${propio ? '<h2>Mi carga</h2>' : `<div class="row"><button class="btn sm ghost" id="vc">← Todos</button><h2 class="grow">${esc(dep.nombre)}</h2></div>`}
     <div class="kpis"><div class="kpi"><small>Esta semana</small><b>${act}</b> <span class="small muted">UA</span></div><div class="kpi"><small>Semana pasada</small><b>${ant}</b> <span class="small muted">UA</span></div><div class="kpi"><small>Media 4 semanas anteriores</small><b>${media4}</b> <span class="small muted">UA</span></div></div>
@@ -603,7 +753,7 @@ async function entrarDep(id, pin, silencioso) {
   }
 }
 function aplicarDep(j) {
-  S.yo = j.dep; D.deportista = [j.dep]; D.sesion = j.sesiones; D.registro = j.registros; D.ejercicio = j.ejercicios;
+  S.yo = j.dep; D.deportista = [j.dep]; D.grupo = j.grupos || []; D.sesion = j.sesiones; D.registro = j.registros; D.ejercicio = j.ejercicios;
 }
 const TABS_D = [['hoy', 'Entreno'], ['semana', 'Semana'], ['micarga', 'Mi carga']];
 function marcoDep() {
@@ -644,16 +794,16 @@ function vDia(m) {
   $('#hoy').onclick = () => { S.ui.dia = key(today()); renderDep(); };
   enlazarSesionDep(m);
 }
-const reg = id => { let r = byId('registro', id); if (!r) { const s = byId('sesion', id); r = { id, dep: S.yo?.id, fecha: s.fecha, sets: {}, hecho: {}, coment: {} }; D.registro.push(r); } r.sets = r.sets || {}; r.hecho = r.hecho || {}; r.coment = r.coment || {}; return r; };
+const reg = sid => { const s = byId('sesion', sid); let r = regDe(s); if (!r) { r = { id: rid(s), ses: sid, dep: S.yo?.id, fecha: s.fecha, sets: {}, hecho: {}, coment: {} }; D.registro.push(r); } r.sets = r.sets || {}; r.hecho = r.hecho || {}; r.coment = r.coment || {}; return r; };
 const repsDe = (it, k) => { const p = String(it.reps || '').split(/\s*[-·]\s*/).filter(Boolean); return p.length > 1 ? (p[k] ?? p[p.length - 1]) : (it.reps || ''); };
 const nSeries = (b, it) => { const p = String(it.reps || '').split(/\s*[-·]\s*/).filter(Boolean); return +it.series || +b.series || (p.length > 1 ? p.length : 1); };
 function sesionDep(s) {
-  const r = byId('registro', s.id) || {}, c = DEP[s.deporte]?.c;
+  const r = regDe(s) || {}, c = DEP[s.deporte]?.c, g = s.grupo && byId('grupo', s.grupo);
   let tot = 0, hech = 0;
   (s.bloques || []).forEach((b, bi) => (b.items || []).forEach((it, ii) => { if (s.deporte === 'fuerza') { const n = nSeries(b, it); for (let k = 0; k < n; k++) { tot++; if (r.sets?.[`${bi}|${ii}|${k}`]?.ok) hech++; } } else { tot++; if (r.hecho?.[`${bi}|${ii}`]) hech++; } }));
-  return `<section class="ses" style="--c:${c}" data-ses="${s.id}"><span class="meta">${DEP[s.deporte]?.n || ''}${s.duracion ? ` · ${s.duracion} min` : ''}${s.rpeObj ? ` · RPE objetivo ${esc(s.rpeObj)}` : ''}</span><h2>${esc(s.titulo || DEP[s.deporte]?.n)}</h2>${s.notas ? `<p>${esc(s.notas)}</p>` : ''}
+  return `<section class="ses" style="--c:${c}" data-ses="${s.id}"><span class="meta">${g ? esc(g.nombre) + ' · ' : ''}${s.subtitulo ? esc(s.subtitulo) + ' · ' : ''}${DEP[s.deporte]?.n || ''}${s.duracion ? ` · ${s.duracion} min` : ''}${s.rpeObj ? ` · RPE objetivo ${esc(s.rpeObj)}` : ''}</span><h2>${esc(s.titulo || DEP[s.deporte]?.n)}</h2>${s.notas ? `<p>${esc(s.notas)}</p>` : ''}
     ${tot ? `<small class="muted">${hech} de ${tot} hechos</small><div class="progress"><i style="width:${tot ? hech / tot * 100 : 0}%"></i></div>` : ''}</section>
-    ${(s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} series` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}</div>
+    ${(s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} series` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
       ${(b.items || []).map((it, ii) => itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
     <section class="card list" data-fin="${s.id}"><h3>${r.rpe ? 'Sesión registrada' : 'Al terminar la sesión'}</h3>
       <label class="l">Minutos totales<input class="f mono" inputmode="numeric" data-min="${s.id}" value="${esc(r.minutos || s.duracion || '')}"></label>
@@ -665,7 +815,7 @@ function itemDep(s, b, bi, ii, it, r) {
   const v = vidId(it.video), c = DEP[s.deporte]?.c;
   const extra = [it.dist && (s.deporte === 'natacion' ? it.dist + ' m' : it.dist), it.tiempo && (s.deporte === 'natacion' ? it.tiempo + ' min' : it.tiempo), it.ritmo, it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && (s.deporte === 'fuerza' ? 'Desc. ' + it.desc : 'Rec. ' + it.desc)].filter(Boolean).join(' · ');
   const cab = `<div class="exh"><div class="t"><h3>${esc(it.nombre || '')}</h3>${s.deporte === 'fuerza' && it.reps ? `<span class="rx">Reps ${esc(it.reps)}${extra ? ' · ' + esc(extra) : ''}</span>` : extra ? `<span class="rx">${esc(extra)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}${s.deporte === 'fuerza' ? ultimaVez(it, s) : ''}</div>
-    ${v ? `<button type="button" class="thumb" data-v="${v}" data-n="${esc(it.nombre)}" aria-label="Ver vídeo: ${esc(it.nombre)}"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
+    ${v ? `<button type="button" class="thumb" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo: ${esc(it.nombre)}"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
     ${s.deporte !== 'fuerza' ? `<button type="button" class="chk" data-hecho="${s.id}|${bi}|${ii}" aria-pressed="${!!r.hecho?.[`${bi}|${ii}`]}" aria-label="Marcar hecho">${CHECK}</button>` : ''}</div>`;
   let body = '';
   if (it.texto) body += `<pre class="txt">${esc(it.texto)}</pre>`;
@@ -680,7 +830,7 @@ function ultimaVez(it, s) {
   let best = null;
   D.sesion.filter(x => x.fecha < s.fecha && x.deporte === 'fuerza').forEach(x => (x.bloques || []).forEach((b, bi) => (b.items || []).forEach((y, ii) => {
     if ((it.ej && y.ej === it.ej) || (!it.ej && y.nombre === it.nombre)) {
-      const r = byId('registro', x.id); if (!r?.sets) return;
+      const r = regDe(x); if (!r?.sets) return;
       const kg = Object.entries(r.sets).filter(([k, v]) => k.startsWith(`${bi}|${ii}|`) && v.kg).sort((a, b) => +a[0].split('|')[2] - +b[0].split('|')[2]).map(([, v]) => v.kg);
       if (kg.length && (!best || x.fecha > best.f)) best = { f: x.fecha, kg };
     }
@@ -690,7 +840,7 @@ function ultimaVez(it, s) {
 function enlazarSesionDep(m) {
   m.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.v) return abrirVideo(b.dataset.v, b.dataset.n);
+    if (b.dataset.v) return abrirVideo(b.dataset.v, b.dataset.n, b.dataset.s, b.dataset.e);
     if (b.dataset.set) { const [sid, bi, ii, k] = b.dataset.set.split('|'); const r = reg(sid), kk = `${bi}|${ii}|${k}`; r.sets[kk] = { ...(r.sets[kk] || {}), ok: !r.sets[kk]?.ok }; guardarReg(r); const on = r.sets[kk].ok; const y = scrollY; renderDep(); scrollTo(0, y); if (on) { const s = byId('sesion', sid), it = s.bloques[+bi].items[+ii]; iniciarDescanso(it.desc, it.nombre); } return; }
     if (b.dataset.hecho) { const [sid, bi, ii] = b.dataset.hecho.split('|'); const r = reg(sid), kk = `${bi}|${ii}`; r.hecho[kk] = !r.hecho[kk]; guardarReg(r); const y = scrollY; renderDep(); scrollTo(0, y); return; }
     if (b.dataset.rpe) { const [sid, v] = b.dataset.rpe.split('|'); const r = reg(sid); r.rpe = +v; const mi = m.querySelector(`[data-min="${sid}"]`); r.minutos = +mi.value || ''; b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); $(`#rpeT-${sid}`).textContent = RPE_TXT[+v]; $(`#ua-${sid}`).textContent = ua(r) + ' UA'; return; }
@@ -744,6 +894,10 @@ async function duracionYT(v) {
   } catch (e) { return null; }
 }
 const vidId = u => (String(u || '').match(/(?:shorts\/|v=|youtu\.be\/|embed\/)([\w-]{11})/) || [])[1];
+// Tramo del vídeo: ?start=S&end=E en el enlace (para quedarse con 10 s de un vídeo más largo); la app lo repite en bucle
+const clip = u => { const a = String(u || '').match(/[?&]start=(\d+)/), b = String(u || '').match(/[?&]end=(\d+)/); return { s: a ? +a[1] : 0, e: b ? +b[1] : 0 }; };
+const tramo = u => { const c = clip(u); return `data-v="${vidId(u)}" data-s="${c.s}" data-e="${c.e}"`; };
+let vidT = null;
 function dialogs() {
   return `<dialog id="vd" aria-label="Vídeo del ejercicio"><div class="vbox"><button type="button" class="vclose" aria-label="Cerrar vídeo">×</button><div class="vframe"><iframe title="Vídeo" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div><p></p></div></dialog>
   <dialog id="ed"><div class="sheet"><header><button class="btn sm ghost" id="edX">Cancelar</button><h2 id="edT"></h2><button class="btn sm pri" id="edOk">Guardar</button></header><div class="body" id="edBody"></div></div></dialog>
@@ -754,19 +908,25 @@ let edOk = null;
 function setupDialogs() {
   const vd = $('#vd');
   vd.addEventListener('click', e => { if (e.target === vd || e.target.closest('.vclose')) cerrarVideo(); });
-  vd.addEventListener('close', () => vd.querySelector('iframe').src = 'about:blank');
+  vd.addEventListener('close', () => { clearInterval(vidT); vd.querySelector('iframe').src = 'about:blank'; });
   $('#edX').onclick = cerrarEd;
   $('#edOk').onclick = () => { if (edOk && edOk() === false) return; cerrarEd(); };
   $('#pkX').onclick = () => $('#pk').close();
   $('#pk').addEventListener('click', e => { if (e.target.id === 'pk') $('#pk').close(); });
   $('#rPlus').onclick = () => { if (R.fin || R.none) return; R.end += 15000; R.tot += 15; tick(); };
   $('#rSkip').onclick = ocultarDescanso;
-  document.addEventListener('click', e => { const t = e.target.closest('#edBody .thumb'); if (t) abrirVideo(t.dataset.v, t.dataset.n); });
+  document.addEventListener('click', e => { const t = e.target.closest('#edBody .thumb'); if (t) abrirVideo(t.dataset.v, t.dataset.n, t.dataset.s, t.dataset.e); });
 }
 function abrirEd(titulo, html, ok, okTxt = 'Guardar') { $('#edT').textContent = titulo; $('#edBody').innerHTML = html; $('#edOk').textContent = okTxt; edOk = ok; const d = $('#ed'); if (!d.open) d.showModal(); $('#edBody').scrollTop = 0; }
 function cerrarEd() { const d = $('#ed'); if (d.open) d.close(); edOk = null; }
-function abrirVideo(v, n) { const d = $('#vd'); d.querySelector('p').textContent = n || ''; d.querySelector('iframe').src = `https://www.youtube-nocookie.com/embed/${v}?autoplay=1&mute=1&loop=1&playlist=${v}&playsinline=1&controls=0&rel=0&modestbranding=1`; d.showModal(); }
-function cerrarVideo() { const d = $('#vd'); d.querySelector('iframe').src = 'about:blank'; if (d.open) d.close(); }
+function abrirVideo(v, n, s, e) {
+  const d = $('#vd'), f = d.querySelector('iframe'); d.querySelector('p').textContent = n || ''; s = +s || 0; e = +e || 0;
+  const base = `https://www.youtube-nocookie.com/embed/${v}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1`;
+  const url = e > s ? `${base}&start=${s}&end=${e}` : `${base}&loop=1&playlist=${v}`;
+  f.src = url; clearInterval(vidT); if (e > s) vidT = setInterval(() => { f.src = url; }, (e - s) * 1000 + 1500);
+  d.showModal();
+}
+function cerrarVideo() { clearInterval(vidT); const d = $('#vd'); d.querySelector('iframe').src = 'about:blank'; if (d.open) d.close(); }
 
 const R = { end: 0, tot: 0, int: null, done: null, fin: false, none: false, ctx: null };
 const mmss = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;

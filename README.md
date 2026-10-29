@@ -1,6 +1,13 @@
 # ABS Entrenamiento
 
-App de entrenador y deportistas: perfiles (nombre + PIN), sesiones de fuerza, natación y carrera, planes predeterminados, biblioteca de ejercicios y carga de entrenamiento por sRPE (RPE × minutos).
+App única de entrenador y deportistas (une las antiguas ABS Seco y ABS Entrenamiento): perfiles individuales (nombre + PIN) y **grupos**, sesiones de fuerza, natación y carrera, planes predeterminados, biblioteca de ejercicios y carga de entrenamiento por sRPE (RPE × minutos).
+
+## Grupos
+
+- En la pestaña **Grupos** se crea el grupo y se copia su enlace (`…/?g=CÓDIGO`). Todo el grupo ve las mismas sesiones; cada persona entra con su nombre y su PIN y registra sus propios kilos, RPE y comentarios.
+- Quien no está en la lista puede unirse desde el enlace (nombre + PIN). Si el entrenador crea a alguien sin PIN, lo elige esa persona la primera vez que entra.
+- Los kilos y comentarios de fuerza se copian también en las pestañas *Registro* y *Comentarios* con el formato de ABS Seco, así que el resumen y el tablero siguen funcionando.
+- Vídeos recortados: `watch?v=ID&start=50&end=60` reproduce ese tramo en bucle.
 
 ## Cómo está organizado
 
