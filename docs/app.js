@@ -699,9 +699,7 @@ function vBaseDatos(m) {
     <div class="row"><input class="f grow" id="rq" placeholder="Buscar (p. ej. 8x50, aletas, umbral)" value="${esc(f.q)}" style="max-width:320px">
       <select class="f" id="rt" style="max-width:240px"><option value="">Todos los contenidos</option>${(TIPOS_REF[f.dep] || []).map(t => `<option ${t === f.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <select class="f" id="ro" style="max-width:180px"><option value="">Todos los orígenes</option>${origenes.map(o => `<option ${o === f.origen ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
-    ${grupos.map(g => `<h3 style="margin-top:6px">${esc(g.tipo || 'Sin clasificar')} <span class="small muted">· ${g.l.length}</span></h3><div class="list">${g.l.map(r => `<details class="card"><summary class="row" style="cursor:pointer"><b class="grow">${esc(r.titulo)}</b><span class="small muted">${esc([r.medida, r.origen === 'Instagram' && r.autor ? '@' + r.autor : r.origen].filter(Boolean).join(' · '))}</span></summary>
-      <pre class="txt" style="margin-top:8px">${esc(r.texto)}</pre>
-      <div class="row">${r.url ? `<a class="btn sm ghost" href="${esc(r.url)}" target="_blank" rel="noopener">Ver original</a>` : ''}<div class="grow"></div><button class="btn sm" data-re="${r.id}">Editar</button></div></details>`).join('')}</div>`).join('')}
+    ${grupos.map(g => { const lim = (S.ui.bdMas || {})[g.tipo] || 12; return `<h3 style="margin-top:6px">${esc(g.tipo || 'Sin clasificar')} <span class="small muted">· ${g.l.length}</span></h3><div class="refgrid">${g.l.slice(0, lim).map(r => refCard(r)).join('')}</div>${g.l.length > lim ? `<button class="btn sm ghost" data-rmas="${esc(g.tipo)}">Ver ${Math.min(12, g.l.length - lim)} más</button>` : ''}`; }).join('')}
     ${todos.length && !lista.length ? '<div class="empty">Nada con ese filtro.</div>' : ''}`;
   m.querySelectorAll('[data-rd]').forEach(b => b.onclick = () => { f.dep = b.dataset.rd; f.tipo = ''; vBaseDatos(m); });
   $('#rq').oninput = e => { f.q = e.target.value; clearTimeout(f._t); f._t = setTimeout(() => { vBaseDatos(m); const i = $('#rq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
@@ -719,6 +717,15 @@ function vBaseDatos(m) {
   };
   $('#nr').onclick = () => editRef({ id: uid(), origen: 'Propio', deporte: f.dep, tipo: f.tipo || (TIPOS_REF[f.dep] || [''])[0], titulo: '', texto: '' }, true);
   m.querySelectorAll('[data-re]').forEach(b => b.onclick = () => editRef(clone(byId('referencia', b.dataset.re))));
+  m.querySelectorAll('[data-rmas]').forEach(b => b.onclick = () => { const t = b.dataset.rmas; S.ui.bdMas = S.ui.bdMas || {}; S.ui.bdMas[t] = ((S.ui.bdMas[t]) || 12) + 12; const y = scrollY; vBaseDatos(m); scrollTo(0, y); });
+}
+// Tarjeta de la base de datos: se ve el set directamente (la publicación de Instagram o el texto de la sesión)
+const igCode = u => (String(u || '').match(/instagram\.com\/(?:p|reel)\/([\w-]+)/) || [])[1];
+function refCard(r) {
+  const ig = igCode(r.url);
+  const pie = `<div class="row small muted" style="justify-content:space-between;gap:6px"><span>${esc([r.origen === 'Instagram' && r.autor ? '@' + r.autor : r.origen, r.medida].filter(Boolean).join(' · '))}</span><span>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a> · ` : ''}<button class="lnk" data-re="${r.id}">Editar</button></span></div>`;
+  if (ig) return `<div class="card refc">${pie}<iframe class="igf" src="https://www.instagram.com/p/${ig}/embed/" loading="lazy" title="${esc(r.titulo)}" allowtransparency="true"></iframe>${r.texto && !/^\(Sin texto/.test(r.texto) ? `<details><summary class="small muted">Texto de la publicación</summary><pre class="txt">${esc(r.texto)}</pre></details>` : ''}</div>`;
+  return `<div class="card refc">${pie}<b>${esc(r.titulo)}</b><pre class="txt">${esc(r.texto)}</pre></div>`;
 }
 function editRef(r, nuevo) {
   abrirEd(nuevo ? 'Nuevo entrenamiento de referencia' : r.titulo, `<div class="card list">

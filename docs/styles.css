@@ -189,3 +189,10 @@ table.data td{padding:7px 8px;border-bottom:1px solid var(--line)}
 table.data td.n{font-family:var(--f-num);text-align:right}
 table.data th.n{text-align:right}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* Base de datos: tarjetas con el set a la vista */
+.refgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start}
+.refc{display:flex;flex-direction:column;gap:8px;min-width:0}
+.refc pre.txt{margin:0;max-height:420px;overflow:auto}
+.igf{width:100%;height:560px;border:0;border-radius:10px;background:#fff}
+.lnk{font:inherit;border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer;padding:0}
