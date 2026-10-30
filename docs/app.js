@@ -27,12 +27,14 @@ const DEP = {
   fuerza: { n: 'Fuerza', c: 'var(--s-fuerza)' },
   natacion: { n: 'Natación', c: 'var(--s-natacion)' },
   carrera: { n: 'Carrera', c: 'var(--s-carrera)' },
+  ciclismo: { n: 'Ciclismo', c: 'var(--s-ciclismo)' },
   otro: { n: 'Otro', c: 'var(--s-otro)' },
 };
 const CATS = {
   fuerza: ['Warm up', 'Activación', 'Saltos, pliometría y fuerza explosiva', 'Fuerza · Empuje', 'Fuerza · Tracción', 'Fuerza · Dominante de rodilla', 'Fuerza · Dominante de cadera', 'Accesorios'],
   natacion: ['Calentamiento', 'Técnica', 'Parte principal', 'Velocidad', 'Vuelta a la calma'],
   carrera: ['Calentamiento', 'Técnica de carrera', 'Rodaje', 'Series', 'Tempo', 'Cuestas', 'Vuelta a la calma'],
+  ciclismo: ['Calentamiento', 'Rodaje', 'Fuerza y cadencia', 'Umbral', 'VO2 máx y sprint', 'Test', 'Vuelta a la calma'],
   otro: ['General'],
 };
 // Categorías antiguas → nuevas (se aplica sola al entrar el entrenador)
@@ -48,7 +50,7 @@ const RPE_TXT = ['Reposo', 'Muy, muy fácil', 'Fácil', 'Moderado', 'Algo duro',
 /* ---------- Estado ---------- */
 const S = {
   auth: LS.get('abs2-auth', null), // {modo:'coach', clave} | {modo:'dep', id, pin, nombre}
-  datos: { deportista: [], grupo: [], ejercicio: [], sesion: [], plan: [], registro: [] },
+  datos: { deportista: [], grupo: [], ejercicio: [], sesion: [], plan: [], registro: [], referencia: [] },
   lista: null, tab: null, ui: {}, guardando: 0,
 };
 const D = S.datos;
@@ -224,13 +226,13 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); marcoCoach(); vaciarCola(); importarAbsSeco();
+    migrarCats(); marcoCoach(); vaciarCola();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
   }
 }
-const TABS_C = [['dep', 'Deportistas'], ['grupos', 'Grupos'], ['cal', 'Calendario'], ['planes', 'Planes'], ['bib', 'Biblioteca'], ['carga', 'Carga']];
+const TABS_C = [['dep', 'Deportistas'], ['grupos', 'Grupos'], ['cal', 'Calendario'], ['planes', 'Planes'], ['bib', 'Biblioteca'], ['bd', 'Base de datos'], ['ia', 'Asistente IA'], ['carga', 'Carga']];
 function marcoCoach() {
   S.tab = S.tab || LS.get('abs2-tab', 'dep');
   document.body.innerHTML = `<header class="hero"><div class="top"><div class="logo">ABS</div><div class="who"><b>Entrenador</b><span id="sync">${esc(S.ui.sync || '')}</span></div><button class="out" id="out">Salir</button></div>
@@ -243,19 +245,7 @@ function marcoCoach() {
 function renderCoach() {
   LS.set('abs2-cache', { modo: 'coach', datos: D });
   const m = $('#main');
-  ({ dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, carga: vCarga })[S.tab](m);
-}
-
-// Paso único: trae el grupo de ABS Seco (Preparación física CDNS), sus nadadores, las 12 sesiones de High Force
-// y los kilos que ya habían registrado. Solo añade lo que falta, así que no pisa nada de lo que se haya registrado aquí.
-async function importarAbsSeco() {
-  if (LS.get('abs2-mig-absseco', false)) return;
-  try {
-    const docs = await (await fetch('migracion-abs-seco.json', { cache: 'no-store' })).json();
-    const faltan = docs.filter(x => !byId(x.tipo, x.doc.id));
-    if (faltan.length) { guardar(faltan); renderCoach(); toast('Grupo Preparación física CDNS listo con el High Force de ABS Seco', 3500); }
-    LS.set('abs2-mig-absseco', true);
-  } catch (e) {}
+  ({ dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, bd: vBaseDatos, ia: vIA, carga: vCarga })[S.tab](m);
 }
 
 /* ---------- Deportistas ---------- */
@@ -581,6 +571,7 @@ const CAMPOS = {
   fuerza: [['reps', 'Reps (por serie: 5-5-5-3)'], ['carga', 'Carga (kg / %)'], ['rpe', 'RPE'], ['desc', 'Descanso'], ['series', 'Series (si cambia)']],
   natacion: [['dist', 'Metros'], ['tiempo', 'Tiempo (min)'], ['rpe', 'Intensidad / RPE']],
   carrera: [['dist', 'Distancia'], ['tiempo', 'Tiempo'], ['ritmo', 'Ritmo / zona'], ['desc', 'Recuperación'], ['rpe', 'RPE']],
+  ciclismo: [['tiempo', 'Tiempo'], ['ritmo', 'Potencia / zona / cadencia'], ['desc', 'Recuperación'], ['rpe', 'RPE']],
   otro: [['tiempo', 'Tiempo'], ['rpe', 'RPE']],
 };
 function itemEd(dep, bi, ii, it) {
@@ -681,6 +672,222 @@ function editEjercicio(e, nuevo) {
     const d = $('#dele'); if (d) d.onclick = () => { if (confirm('¿Borrar este ejercicio de la biblioteca? Las sesiones que ya lo usan no cambian.')) { borrar([{ tipo: 'ejercicio', id: e.id }]); cerrarEd(); renderCoach(); } };
   };
   enl();
+}
+
+/* ---------- Base de datos de entrenamientos (Train2Go, Instagram…) ---------- */
+// Cada referencia: {id, origen, deporte, tipo, titulo, texto, autor, url, medida, coleccion}
+const TIPOS_REF = {
+  natacion: ['Técnica', 'Aeróbico (R1–R2)', 'Umbral (R3)', 'VO2 máx y velocidad (R4–R6)', 'Mixto', 'Test', 'Aguas abiertas', 'Calentamiento de competición', 'Activación', 'Subacuático y apnea', 'Seco y gomas'],
+  carrera: ['Rodaje y fondo', 'Fartlek', 'Cuestas', 'Umbral (R3)', 'VO2 máx y velocidad', 'Progresivos', 'Test', 'Calentamiento de competición'],
+  ciclismo: ['Rodaje y fondo', 'Fuerza y cadencia', 'Umbral (R2–R3)', 'VO2 máx y sprint', 'Test', 'Calentamiento de competición'],
+  fuerza: ['Core', 'Fuerza gimnasio', 'Fuerza en casa', 'Prevención y movilidad', 'Pliometría y potencia', 'Iniciación'],
+  otro: ['General'],
+};
+function vBaseDatos(m) {
+  const f = S.ui.bd = S.ui.bd || { dep: 'natacion', tipo: '', origen: '', q: '' };
+  const todos = D.referencia;
+  const lista = todos.filter(r => r.deporte === f.dep && (!f.tipo || r.tipo === f.tipo) && (!f.origen || r.origen === f.origen) && (!f.q || norm([r.titulo, r.texto, r.autor].join(' ')).includes(norm(f.q))))
+    .sort((a, b) => (TIPOS_REF[a.deporte] || []).indexOf(a.tipo) - (TIPOS_REF[b.deporte] || []).indexOf(b.tipo) || String(a.titulo).localeCompare(String(b.titulo), 'es'));
+  const n = k => todos.filter(r => r.deporte === k).length;
+  const origenes = [...new Set(todos.map(r => r.origen).filter(Boolean))].sort();
+  const grupos = []; lista.forEach(r => { const g = grupos[grupos.length - 1]; if (g && g.tipo === r.tipo) g.l.push(r); else grupos.push({ tipo: r.tipo, l: [r] }); });
+  m.innerHTML = `<div class="row"><h2 class="grow">Base de datos de entrenamientos</h2><label class="btn" style="cursor:pointer">Importar archivo<input type="file" id="rimp" accept=".json,application/json" hidden></label><button class="btn" id="nr">+ Añadir</button></div>
+    <p class="muted small" style="margin-top:0">Entrenamientos de referencia de Train2Go e Instagram, ordenados por el contenido que trabajan. El asistente de IA los usa como ejemplos.</p>
+    ${todos.length ? '' : '<div class="empty">La base de datos está vacía.</div>'}
+    <div class="chips">${Object.entries(DEP).filter(([k]) => n(k)).map(([k, v]) => `<button class="chip" data-rd="${k}" aria-pressed="${f.dep === k}"><i style="--c:${v.c}"></i>${v.n} · ${n(k)}</button>`).join('')}</div>
+    <div class="row"><input class="f grow" id="rq" placeholder="Buscar (p. ej. 8x50, aletas, umbral)" value="${esc(f.q)}" style="max-width:320px">
+      <select class="f" id="rt" style="max-width:240px"><option value="">Todos los contenidos</option>${(TIPOS_REF[f.dep] || []).map(t => `<option ${t === f.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+      <select class="f" id="ro" style="max-width:180px"><option value="">Todos los orígenes</option>${origenes.map(o => `<option ${o === f.origen ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>
+    ${grupos.map(g => `<h3 style="margin-top:6px">${esc(g.tipo || 'Sin clasificar')} <span class="small muted">· ${g.l.length}</span></h3><div class="list">${g.l.map(r => `<details class="card"><summary class="row" style="cursor:pointer"><b class="grow">${esc(r.titulo)}</b><span class="small muted">${esc([r.medida, r.origen === 'Instagram' && r.autor ? '@' + r.autor : r.origen].filter(Boolean).join(' · '))}</span></summary>
+      <pre class="txt" style="margin-top:8px">${esc(r.texto)}</pre>
+      <div class="row">${r.url ? `<a class="btn sm ghost" href="${esc(r.url)}" target="_blank" rel="noopener">Ver original</a>` : ''}<div class="grow"></div><button class="btn sm" data-re="${r.id}">Editar</button></div></details>`).join('')}</div>`).join('')}
+    ${todos.length && !lista.length ? '<div class="empty">Nada con ese filtro.</div>' : ''}`;
+  m.querySelectorAll('[data-rd]').forEach(b => b.onclick = () => { f.dep = b.dataset.rd; f.tipo = ''; vBaseDatos(m); });
+  $('#rq').oninput = e => { f.q = e.target.value; clearTimeout(f._t); f._t = setTimeout(() => { vBaseDatos(m); const i = $('#rq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+  $('#rt').onchange = e => { f.tipo = e.target.value; vBaseDatos(m); };
+  $('#ro').onchange = e => { f.origen = e.target.value; vBaseDatos(m); };
+  $('#rimp').onchange = async e => {
+    const fi = e.target.files[0]; if (!fi) return;
+    try {
+      const arr = JSON.parse(await fi.text());
+      const docs = (Array.isArray(arr) ? arr : []).map(x => x.tipo === 'referencia' && x.doc ? x.doc : x).filter(d => d && d.id && d.titulo && d.deporte && !byId('referencia', d.id));
+      if (!docs.length) return toast('No hay entrenamientos nuevos en ese archivo');
+      for (let i = 0; i < docs.length; i += 40) guardar(docs.slice(i, i + 40).map(d => ({ tipo: 'referencia', doc: d })));
+      toast(`${docs.length} entrenamientos importados`); renderCoach();
+    } catch (x) { toast('Ese archivo no es una base de datos válida'); }
+  };
+  $('#nr').onclick = () => editRef({ id: uid(), origen: 'Propio', deporte: f.dep, tipo: f.tipo || (TIPOS_REF[f.dep] || [''])[0], titulo: '', texto: '' }, true);
+  m.querySelectorAll('[data-re]').forEach(b => b.onclick = () => editRef(clone(byId('referencia', b.dataset.re))));
+}
+function editRef(r, nuevo) {
+  abrirEd(nuevo ? 'Nuevo entrenamiento de referencia' : r.titulo, `<div class="card list">
+    <label class="l">Título<input class="f" id="rft" value="${esc(r.titulo)}"></label>
+    <div class="grid2"><label class="l">Deporte<select class="f" id="rfd">${Object.entries(DEP).map(([k, v]) => `<option value="${k}" ${k === r.deporte ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label>
+    <label class="l">Contenido que trabaja<input class="f" id="rfc" value="${esc(r.tipo || '')}" list="tiposRef"></label></div>
+    <datalist id="tiposRef">${Object.values(TIPOS_REF).flat().map(t => `<option value="${esc(t)}">`).join('')}</datalist>
+    <label class="l">Entrenamiento<textarea class="f mono" id="rfx" rows="12">${esc(r.texto)}</textarea></label>
+    <div class="grid2"><label class="l">Origen<input class="f" id="rfo" value="${esc(r.origen || '')}"></label><label class="l">Enlace<input class="f" id="rfu" value="${esc(r.url || '')}"></label></div></div>
+    ${nuevo ? '' : '<button class="btn danger" id="rfdel">Borrar de la base de datos</button>'}`,
+    () => {
+      Object.assign(r, { titulo: $('#rft').value.trim(), deporte: $('#rfd').value, tipo: $('#rfc').value.trim(), texto: $('#rfx').value, origen: $('#rfo').value.trim(), url: $('#rfu').value.trim() });
+      if (!r.titulo) return toast('Falta el título'), false;
+      guardar([{ tipo: 'referencia', doc: r }]); renderCoach();
+    });
+  if (!nuevo) $('#rfdel').onclick = () => { if (confirm('¿Borrar este entrenamiento de la base de datos?')) { borrar([{ tipo: 'referencia', id: r.id }]); cerrarEd(); renderCoach(); } };
+}
+
+/* ---------- Asistente IA (Claude, a través de la API de Anthropic) ---------- */
+const IA_MODELOS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (recomendado)'], ['claude-opus-5-5', 'Claude Opus 5.5 (más potente, más caro)']];
+let iaKey = null;
+async function claveIA() {
+  if (iaKey) return iaKey;
+  const j = await api({ a: 'coach', op: 'iaClave', clave: S.auth.clave });
+  if (!j.ok) throw new Error(j.error === 'op' ? 'script' : j.error);
+  return (iaKey = j.key || '');
+}
+function vIA(m) {
+  const f = S.ui.ia = S.ui.ia || { deporte: 'fuerza', objetivo: '', perfil: '', nivel: 'Intermedio', semanas: 4, dias: [1, 3, 6], duracion: 60, material: 'Barra, mancuernas, discos, rack, bancos, gomas, cajón y balón medicinal', fecha: '', notas: '', modelo: IA_MODELOS[0][0] };
+  m.innerHTML = `<div class="row"><h2 class="grow">Asistente IA</h2><button class="btn sm ghost" id="iak">Clave de la API</button></div>
+    <p class="muted small" style="margin-top:0">Describe a quién va dirigido y qué buscas. La IA prepara un plan basado en la evidencia, con los ejercicios de tu biblioteca y tu base de datos como referencia. El plan se guarda en Planes para que lo revises antes de asignarlo.</p>
+    <div class="card list">
+      <div class="l">Deporte<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-iad="${k}" aria-pressed="${f.deporte === k}"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
+      <label class="l">Objetivo<textarea class="f" id="iao" rows="2" placeholder="p. ej. Mejorar la fuerza máxima y la potencia en el agua antes del campeonato de invierno">${esc(f.objetivo)}</textarea></label>
+      <label class="l">Para quién<textarea class="f" id="iap" rows="2" placeholder="p. ej. Nadadores de 14 a 22 años, 3 años entrenando fuerza, 8 sesiones de agua por semana">${esc(f.perfil)}</textarea></label>
+      <div class="grid2">
+        <label class="l">Nivel<select class="f" id="ian">${['Iniciación', 'Intermedio', 'Avanzado', 'Alto rendimiento'].map(x => `<option ${x === f.nivel ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+        <label class="l">Semanas<input class="f" type="number" min="1" max="16" id="ias" value="${f.semanas}"></label>
+        <label class="l">Duración por sesión (min)<input class="f" type="number" min="10" max="240" id="iadu" value="${f.duracion}"></label>
+        <label class="l">Fecha clave (competición, examen…)<input class="f" type="date" id="iaf" value="${esc(f.fecha)}"></label>
+      </div>
+      <div class="l">Días de entrenamiento<div class="chips">${DIAS.map((d, i) => `<button type="button" class="chip" data-iadia="${i + 1}" aria-pressed="${f.dias.includes(i + 1)}">${d}</button>`).join('')}</div></div>
+      <label class="l">Material disponible<input class="f" id="iam" value="${esc(f.material)}"></label>
+      <label class="l">Más detalles (lesiones, pruebas de la oposición, marcas, lo que no quieres…)<textarea class="f" id="iax" rows="3">${esc(f.notas)}</textarea></label>
+      <label class="l">Modelo<select class="f" id="iamo" style="max-width:340px">${IA_MODELOS.map(([k, n]) => `<option value="${k}" ${k === f.modelo ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <div class="row"><button class="btn pri" id="iag">Generar plan</button><span class="small muted" id="iae"></span></div>
+    </div>
+    <div id="iar"></div>`;
+  const leer = () => Object.assign(f, { objetivo: $('#iao').value.trim(), perfil: $('#iap').value.trim(), nivel: $('#ian').value, semanas: Math.max(1, Math.min(16, +$('#ias').value || 1)), duracion: +$('#iadu').value || 60, fecha: $('#iaf').value, material: $('#iam').value.trim(), notas: $('#iax').value.trim(), modelo: $('#iamo').value });
+  m.querySelectorAll('[data-iad]').forEach(b => b.onclick = () => { leer(); f.deporte = b.dataset.iad; vIA(m); });
+  m.querySelectorAll('[data-iadia]').forEach(b => b.onclick = () => { const d = +b.dataset.iadia; f.dias = f.dias.includes(d) ? f.dias.filter(x => x !== d) : [...f.dias, d].sort(); b.setAttribute('aria-pressed', f.dias.includes(d)); });
+  $('#iak').onclick = () => configIA();
+  $('#iag').onclick = async () => {
+    leer();
+    if (!f.objetivo) return toast('Escribe el objetivo');
+    if (!f.dias.length) return toast('Elige al menos un día');
+    const btn = $('#iag'), est = $('#iae');
+    let key;
+    try { key = await claveIA(); } catch (e) { return toast(e.message === 'script' ? 'Falta actualizar el Apps Script con el código nuevo' : 'No hay conexión con la hoja'); }
+    if (!key) return configIA(() => $('#iag').click());
+    btn.disabled = true; est.textContent = 'Preparando el plan… (puede tardar 1–2 minutos)';
+    try {
+      const plan = await generarPlanIA(f, key);
+      S.ui.iaRes = plan; pintarResultadoIA($('#iar'), plan);
+      est.textContent = '';
+    } catch (e) { est.textContent = ''; toast('No se pudo generar: ' + e.message, 6000); }
+    btn.disabled = false;
+  };
+  if (S.ui.iaRes) pintarResultadoIA($('#iar'), S.ui.iaRes);
+}
+function configIA(despues) {
+  abrirEd('Clave de la API de Anthropic', `<div class="card list">
+    <p class="small">El asistente usa Claude a través de la API de Anthropic. Se paga por uso, aparte de tu suscripción.</p>
+    <p class="small"><b>1.</b> Entra en <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>, añade saldo en <i>Billing</i> y crea una clave en <i>API keys</i>.<br><b>2.</b> Pégala aquí. Se guarda en el Apps Script de tu hoja (no en la hoja ni en el móvil de los deportistas).</p>
+    <label class="l">Clave<input class="f mono" id="iakk" placeholder="sk-ant-…" autocomplete="off"></label></div>`,
+    () => {
+      const k = $('#iakk').value.trim();
+      if (!/^sk-ant-/.test(k)) return toast('La clave empieza por sk-ant-'), false;
+      api({ a: 'coach', op: 'iaGuardarClave', clave: S.auth.clave, key: k }).then(j => { if (j.ok) { iaKey = k; toast('Clave guardada'); despues && despues(); } else toast(j.error === 'op' ? 'Falta actualizar el Apps Script con el código nuevo' : 'No se pudo guardar'); }).catch(() => toast('No hay conexión'));
+    });
+}
+// Ejemplos de la base de datos parecidos al objetivo (por palabras en común)
+function refsParecidas(f, n = 12) {
+  const pal = new Set(norm([f.objetivo, f.notas].join(' ')).split(/[^a-z0-9]+/).filter(w => w.length > 3));
+  return D.referencia.filter(r => r.deporte === f.deporte)
+    .map(r => ({ r, p: norm([r.titulo, r.tipo, r.texto].join(' ')).split(/[^a-z0-9]+/).filter(w => pal.has(w)).length + Math.random() }))
+    .sort((a, b) => b.p - a.p).slice(0, n).map(x => x.r);
+}
+const IA_SISTEMA = `Eres un preparador físico y entrenador de resistencia con formación universitaria en Ciencias del Deporte. Diseñas planes basados en la evidencia científica actual (sobrecarga progresiva, especificidad, periodización por bloques u ondulante, autorregulación con RPE/RIR, gestión de la fatiga, puesta a punto antes de competiciones o exámenes, prevención de lesiones).
+Trabajas con la metodología del entrenador: sesiones de fuerza organizadas en bloques Warm up / movilidad, Activación, Saltos-pliometría y fuerza explosiva, Fuerza 1 (dominante de cadera + empuje), Fuerza 2 (dominante de rodilla + tracción), Accesorios/estructura, y bloque de acondicionamiento opcional. En natación, carrera y ciclismo usa la nomenclatura de intensidades de sus sesiones de referencia (R0 recuperación … R6 máxima) y el formato de series habitual (p. ej. "8x50 d/10\\" aletas: 25 técnica + 25 nado").
+Reglas:
+- Usa SIEMPRE que puedas ejercicios de la biblioteca, indicando su id en "ej" y copiando su nombre exacto. Solo si ninguno sirve, propone uno nuevo con "ej": null y "nuevo": true.
+- Solo ejercicios que el deportista pueda hacer solo con el material indicado.
+- Las cargas de fuerza se expresan con RPE/REP o RIR y repeticiones; nunca kilos absolutos.
+- Responde SOLO con un objeto JSON válido, sin texto antes ni después, con este formato:
+{"nombre":"…","desc":"resumen de 1–2 frases","justificacion":"por qué está planteado así, citando los principios y la evidencia que lo apoyan (máx. 150 palabras)","etiquetasSemana":["Base","Carga",…],
+ "sesiones":[{"dia":1,"semanas":[1,2,3,4],"titulo":"…","deporte":"fuerza|natacion|carrera|ciclismo|otro","duracion":60,"rpeObj":"6–7","notas":"…",
+   "bloques":[{"nombre":"…","series":[3,3,4,4],"tiempo":"10'","items":[{"ej":"id o null","nuevo":false,"nombre":"…","reps":["5","5","5-5-5-3","5-3-3-3"],"rpe":["REP 7","REP 8","REP 8","REP 9"],"desc":"75 s","notas":"indicación técnica breve","texto":"solo en natación, carrera y ciclismo: la tarea escrita tal cual","dist":"","tiempo":"","ritmo":""}]}]}]}
+- "dia" va de 1 (lunes) a 7 (domingo). "semanas" son las semanas del plan en que se repite esa sesión. Los campos que cambian cada semana (series, reps, rpe, dist, tiempo, ritmo, texto) pueden ser una lista con un valor por semana o un único valor si no cambian.
+- En fuerza cada ejercicio lleva reps; si cambian por serie, sepáralas con guiones (5-5-3).`;
+async function generarPlanIA(f, key) {
+  const lib = D.ejercicio.filter(e => e.deporte === f.deporte || (f.deporte !== 'fuerza' && e.deporte === 'fuerza')).sort(ordenEj)
+    .map(e => `${e.id} | ${e.deporte} | ${e.cat || ''} | ${e.nombre}`).join('\n');
+  const refs = refsParecidas(f).map(r => `### ${r.titulo} (${r.tipo}${r.medida ? ', ' + r.medida : ''})\n${String(r.texto).slice(0, 1200)}`).join('\n\n');
+  const hoy = key2(new Date());
+  const prompt = `Prepara un plan de ${f.semanas} ${f.semanas === 1 ? 'semana' : 'semanas'} de ${DEP[f.deporte].n.toLowerCase()}.
+Objetivo: ${f.objetivo}
+Para quién: ${f.perfil || 'sin especificar'}
+Nivel: ${f.nivel}
+Días: ${f.dias.map(d => DIAS[d - 1]).join(', ')} (${f.dias.length} sesiones por semana de este deporte)
+Duración por sesión: unos ${f.duracion} minutos
+Material: ${f.material || 'sin especificar'}
+${f.fecha ? `Fecha clave: ${f.fecha} (hoy es ${hoy}); planifica la puesta a punto para que llegue en forma.` : ''}
+Más detalles: ${f.notas || 'ninguno'}
+
+BIBLIOTECA DE EJERCICIOS (id | deporte | categoría | nombre):
+${lib || '(vacía)'}
+
+${refs ? `SESIONES DE REFERENCIA DE LA BASE DE DATOS DEL ENTRENADOR (imita su estilo y notación):\n${refs}` : ''}`;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: f.modelo, max_tokens: 32000, system: IA_SISTEMA, messages: [{ role: 'user', content: prompt }] }),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error?.type === 'authentication_error' ? 'la clave no es válida' : j.error?.message || ('error ' + r.status));
+  const txt = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+  if (a < 0 || b < a) throw new Error('la respuesta no trae un plan');
+  let plan;
+  try { plan = JSON.parse(txt.slice(a, b + 1)); } catch (e) { throw new Error(j.stop_reason === 'max_tokens' ? 'el plan era demasiado largo; prueba con menos semanas' : 'la respuesta no se pudo leer'); }
+  plan._semanas = f.semanas; plan._deporte = f.deporte; plan._uso = j.usage;
+  return plan;
+}
+const key2 = d => key(d);
+// Convierte la respuesta de la IA en un plan de la app (una sesión por semana y día)
+function planDesdeIA(p) {
+  const N = p._semanas || 1, val = (v, w) => Array.isArray(v) ? (v[w - 1] ?? v[v.length - 1] ?? '') : (v ?? '');
+  const sesiones = [];
+  (p.sesiones || []).forEach(t => {
+    const sem = (Array.isArray(t.semanas) && t.semanas.length ? t.semanas : Array.from({ length: N }, (_, i) => i + 1)).filter(w => w >= 1 && w <= N);
+    sem.forEach(w => sesiones.push({
+      id: uid(), semana: w, dia: Math.min(7, Math.max(1, +t.dia || 1)), titulo: t.titulo || '', deporte: DEP[t.deporte] ? t.deporte : p._deporte,
+      subtitulo: `Semana ${w}${p.etiquetasSemana?.[w - 1] ? ' · ' + p.etiquetasSemana[w - 1] : ''}`, duracion: String(t.duracion || ''), rpeObj: String(val(t.rpeObj, w) || ''), notas: t.notas || '',
+      bloques: (t.bloques || []).map(b => ({ id: uid(), nombre: b.nombre || '', series: val(b.series, w) || '', tiempo: b.tiempo || '', items: (b.items || []).map(it => {
+        const ej = it.ej && byId('ejercicio', it.ej);
+        const o = { id: uid(), nombre: ej ? ej.nombre : (it.nombre || ''), video: ej?.video || '' };
+        if (ej) o.ej = ej.id;
+        ['reps', 'carga', 'rpe', 'desc', 'dist', 'tiempo', 'ritmo', 'texto', 'series'].forEach(k => { const v = val(it[k], w); if (v !== '' && v != null) o[k] = String(v); });
+        o.notas = [it.notas, !ej && it.nombre ? 'Ejercicio nuevo propuesto por la IA (sin vídeo)' : ''].filter(Boolean).join(' · ');
+        return o;
+      }) })),
+    }));
+  });
+  return { id: uid(), nombre: p.nombre || 'Plan IA', desc: [p.desc, p.justificacion ? 'Justificación: ' + p.justificacion : ''].filter(Boolean).join('\n\n'), semanas: N, sesiones, fuente: 'Asistente IA' };
+}
+function pintarResultadoIA(el, p) {
+  const pl = planDesdeIA(p);
+  const nuevos = new Set(); pl.sesiones.forEach(s => s.bloques.forEach(b => b.items.forEach(it => { if (!it.ej && s.deporte === 'fuerza') nuevos.add(it.nombre); })));
+  const sem1 = pl.sesiones.filter(s => s.semana === 1).sort((a, b) => a.dia - b.dia);
+  el.innerHTML = `<div class="card list"><div class="row"><h3 class="grow" style="margin:0">${esc(pl.nombre)}</h3><button class="btn pri" id="iasv">Guardar en Planes</button></div>
+    <p class="small" style="margin:0">${esc(p.desc || '')}</p>
+    ${p.justificacion ? `<p class="small muted" style="margin:0"><b>Por qué así:</b> ${esc(p.justificacion)}</p>` : ''}
+    <p class="small muted" style="margin:0">${pl.semanas} ${pl.semanas === 1 ? 'semana' : 'semanas'} · ${pl.sesiones.length} sesiones${nuevos.size ? ` · ${nuevos.size} ejercicios nuevos fuera de la biblioteca: ${esc([...nuevos].join(', '))}` : ''}</p>
+    <h3 style="margin:6px 0 0">Semana 1</h3>
+    ${sem1.map(s => `<details><summary><b>${DIAS[s.dia - 1]} · ${esc(s.titulo)}</b> <span class="small muted">${esc(DEP[s.deporte]?.n || '')}${s.duracion ? ' · ' + s.duracion + ' min' : ''}</span></summary>
+      ${s.notas ? `<p class="small">${esc(s.notas)}</p>` : ''}
+      ${s.bloques.map(b => `<p class="small" style="margin:6px 0 2px"><b>${esc(b.nombre)}</b>${b.series ? ` · ${esc(b.series)} series` : ''}${b.tiempo ? ` · ${esc(b.tiempo)}` : ''}</p><ul class="small" style="margin:0;padding-left:18px">${b.items.map(it => `<li>${esc(it.nombre)}${[it.reps && 'reps ' + it.reps, it.rpe, it.desc && 'desc. ' + it.desc].filter(Boolean).length ? ' · ' + esc([it.reps && 'reps ' + it.reps, it.rpe, it.desc && 'desc. ' + it.desc].filter(Boolean).join(' · ')) : ''}${it.texto ? `<pre class="txt">${esc(it.texto)}</pre>` : ''}</li>`).join('')}</ul>`).join('')}</details>`).join('')}
+  </div>`;
+  $('#iasv').onclick = () => { guardar([{ tipo: 'plan', doc: pl }]); S.ui.iaRes = null; S.ui.plan = pl.id; S.tab = 'planes'; LS.set('abs2-tab', 'planes'); marcoCoach(); vPlan($('#main')); toast('Plan guardado: revísalo y asígnalo desde el Calendario'); };
 }
 
 /* ---------- Carga (sRPE) ---------- */

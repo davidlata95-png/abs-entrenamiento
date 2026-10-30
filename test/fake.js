@@ -31,6 +31,7 @@ function load() {
     SpreadsheetApp: { getActiveSpreadsheet: () => ss },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ setMimeType() { return this; }, text: t }) },
+    PropertiesService: (() => { const P = {}; const sp = { getProperty: k => P[k] ?? null, setProperty: (k, v) => { P[k] = v; } }; return { getScriptProperties: () => sp }; })(),
     Utilities: {
       DigestAlgorithm: { SHA_256: 1 }, Charset: { UTF_8: 1 },
       computeDigest: (_, s) => Array.from(crypto.createHash('sha256').update(s).digest()).map(b => b > 127 ? b - 256 : b),

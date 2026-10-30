@@ -304,6 +304,9 @@ function api_(q) {
     }
     if (q.op === 'guardar') { guardarDocs_(q.docs || []); return { ok: true }; }
     if (q.op === 'borrar') { borrarDocs_(q.items || []); return { ok: true }; }
+    // Asistente IA: la clave de la API de Anthropic se guarda en las propiedades del script (no en la hoja)
+    if (q.op === 'iaGuardarClave') { PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', String(q.key || '').trim()); return { ok: true }; }
+    if (q.op === 'iaClave') { return { ok: true, key: PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') || '' }; }
     if (q.op === 'cambiarClave') { hConfig_().getRange('B1').setValue(huella_(q.nueva)); return { ok: true }; }
     return { ok: false, error: 'op' };
   }

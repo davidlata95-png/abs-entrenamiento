@@ -48,4 +48,8 @@ assert.strictEqual(JSON.stringify(filasR[1].slice(2)),JSON.stringify(['2026-11-0
 assert.strictEqual(sheets.Comentarios.rows.find(x=>x[1]==='Nerea López')[6],'Bien');
 r=post({a:'login',id:'d2',pin:'4321'});assert(r.registros.length===1&&r.registros[0].sets['0|0|2'].kg==='70');
 assert.strictEqual(sheets.Carga.rows.filter(x=>x[7]==='gs1~d2')[0][6],350);
+assert.strictEqual(post({a:'coach',op:'iaClave',clave:'abcd1'}).key,'');
+assert(!post({a:'coach',op:'iaClave',clave:'mal'}).ok);
+post({a:'coach',op:'iaGuardarClave',clave:'abcd1',key:' sk-ant-x '});assert.strictEqual(post({a:'coach',op:'iaClave',clave:'abcd1'}).key,'sk-ant-x');
+assert(!('key' in post({a:'lista'})));
 console.log('API OK');

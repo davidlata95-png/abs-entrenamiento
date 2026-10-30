@@ -2,7 +2,7 @@
 :root{
   --bg:#eef1f3; --card:#ffffff; --card2:#f6f8f9; --line:#e2e7ea; --fg:#141b20; --muted:#68757f; --faint:#9aa5ad;
   --hero1:#16302f; --hero2:#2c4f4b; --hero-fg:#f3f7f6; --accent:#e8742a; --accent-fg:#ffffff; --ok:#2f8f63; --bad:#c2412d;
-  --s-fuerza:#7b62c9; --s-natacion:#2f86c4; --s-carrera:#d9a03c; --s-otro:#7aa37c;
+  --s-fuerza:#7b62c9; --s-natacion:#2f86c4; --s-carrera:#d9a03c; --s-ciclismo:#c2557a; --s-otro:#7aa37c;
   --f-ui:"Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --f-num:"IBM Plex Mono", ui-monospace, Menlo, monospace;
   --chart-grid:#e6eaed;
 }
