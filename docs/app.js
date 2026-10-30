@@ -32,17 +32,18 @@ const DEP = {
 };
 const CATS = {
   fuerza: ['Warm up', 'Activación', 'Saltos, pliometría y fuerza explosiva', 'Fuerza · Empuje', 'Fuerza · Tracción', 'Fuerza · Dominante de rodilla', 'Fuerza · Dominante de cadera', 'Accesorios'],
-  natacion: ['Calentamiento', 'Técnica', 'Parte principal', 'Velocidad', 'Vuelta a la calma'],
+  natacion: ['Potencia', 'R100', 'R200', 'R400', 'PAE', 'AEI', 'AEM', 'AEL', 'Kick sets', 'UW', 'Ejercicios de técnica', 'Warm up', 'Cool down'],
   carrera: ['Calentamiento', 'Técnica de carrera', 'Rodaje', 'Series', 'Tempo', 'Cuestas', 'Vuelta a la calma'],
   ciclismo: ['Calentamiento', 'Rodaje', 'Fuerza y cadencia', 'Umbral', 'VO2 máx y sprint', 'Test', 'Vuelta a la calma'],
   otro: ['General'],
 };
 // Categorías antiguas → nuevas (se aplica sola al entrar el entrenador)
+const CAT_ANT_NAT = { 'Calentamiento': 'Warm up', 'Técnica': 'Ejercicios de técnica', 'Velocidad': 'Potencia', 'Vuelta a la calma': 'Cool down' };
 const CAT_ANT = { 'Movilidad': 'Warm up', 'Pliometría y lanzamientos': 'Saltos, pliometría y fuerza explosiva', 'Derivados olímpicos': 'Saltos, pliometría y fuerza explosiva', 'Empuje': 'Fuerza · Empuje', 'Tracción': 'Fuerza · Tracción', 'Dominante de rodilla': 'Fuerza · Dominante de rodilla', 'Dominante de cadera': 'Fuerza · Dominante de cadera', 'Core': 'Accesorios', 'Prevención de hombro': 'Accesorios' };
 const ordCat = (dep, c) => { const i = (CATS[dep] || []).indexOf(c); return i < 0 ? 99 : i; };
 const ordenEj = (a, b) => ordCat(a.deporte, a.cat) - ordCat(b.deporte, b.cat) || a.nombre.localeCompare(b.nombre, 'es');
 function migrarCats() {
-  const cambios = D.ejercicio.filter(e => e.deporte === 'fuerza' && CAT_ANT[e.cat]).map(e => ({ tipo: 'ejercicio', doc: { ...e, cat: CAT_ANT[e.cat] } }));
+  const cambios = D.ejercicio.filter(e => (e.deporte === 'fuerza' && CAT_ANT[e.cat]) || (e.deporte === 'natacion' && CAT_ANT_NAT[e.cat])).map(e => ({ tipo: 'ejercicio', doc: { ...e, cat: (e.deporte === 'natacion' ? CAT_ANT_NAT : CAT_ANT)[e.cat] } }));
   if (cambios.length) guardar(cambios);
 }
 const RPE_TXT = ['Reposo', 'Muy, muy fácil', 'Fácil', 'Moderado', 'Algo duro', 'Duro', 'Duro', 'Muy duro', 'Muy duro', 'Muy duro', 'Máximo'];
@@ -677,10 +678,10 @@ function editEjercicio(e, nuevo) {
 /* ---------- Base de datos de entrenamientos (Train2Go, Instagram…) ---------- */
 // Cada referencia: {id, origen, deporte, tipo, titulo, texto, autor, url, medida, coleccion}
 const TIPOS_REF = {
-  natacion: ['Técnica', 'Aeróbico (R1–R2)', 'Umbral (R3)', 'VO2 máx y velocidad (R4–R6)', 'Mixto', 'Test', 'Aguas abiertas', 'Calentamiento de competición', 'Activación', 'Subacuático y apnea', 'Seco y gomas'],
+  natacion: ['Potencia', 'R100', 'R200', 'R400', 'PAE', 'AEI', 'AEM', 'AEL', 'Kick sets', 'UW', 'Ejercicios de técnica', 'Warm up', 'Cool down', 'Sesión completa', 'Otros'],
   carrera: ['Rodaje y fondo', 'Fartlek', 'Cuestas', 'Umbral (R3)', 'VO2 máx y velocidad', 'Progresivos', 'Test', 'Calentamiento de competición'],
   ciclismo: ['Rodaje y fondo', 'Fuerza y cadencia', 'Umbral (R2–R3)', 'VO2 máx y sprint', 'Test', 'Calentamiento de competición'],
-  fuerza: ['Core', 'Fuerza gimnasio', 'Fuerza en casa', 'Prevención y movilidad', 'Pliometría y potencia', 'Iniciación'],
+  fuerza: ['Core', 'Fuerza gimnasio', 'Fuerza en casa', 'Fuerza en seco para natación', 'Prevención y movilidad', 'Pliometría y potencia', 'Iniciación'],
   otro: ['General'],
 };
 function vBaseDatos(m) {
@@ -807,7 +808,7 @@ function refsParecidas(f, n = 12) {
     .sort((a, b) => b.p - a.p).slice(0, n).map(x => x.r);
 }
 const IA_SISTEMA = `Eres un preparador físico y entrenador de resistencia con formación universitaria en Ciencias del Deporte. Diseñas planes basados en la evidencia científica actual (sobrecarga progresiva, especificidad, periodización por bloques u ondulante, autorregulación con RPE/RIR, gestión de la fatiga, puesta a punto antes de competiciones o exámenes, prevención de lesiones).
-Trabajas con la metodología del entrenador: sesiones de fuerza organizadas en bloques Warm up / movilidad, Activación, Saltos-pliometría y fuerza explosiva, Fuerza 1 (dominante de cadera + empuje), Fuerza 2 (dominante de rodilla + tracción), Accesorios/estructura, y bloque de acondicionamiento opcional. En natación, carrera y ciclismo usa la nomenclatura de intensidades de sus sesiones de referencia (R0 recuperación … R6 máxima) y el formato de series habitual (p. ej. "8x50 d/10\\" aletas: 25 técnica + 25 nado").
+Trabajas con la metodología del entrenador: sesiones de fuerza organizadas en bloques Warm up / movilidad, Activación, Saltos-pliometría y fuerza explosiva, Fuerza 1 (dominante de cadera + empuje), Fuerza 2 (dominante de rodilla + tracción), Accesorios/estructura, y bloque de acondicionamiento opcional. En natación organiza el trabajo por contenidos: Warm up, Ejercicios de técnica, AEL (aeróbico ligero), AEM (aeróbico medio), AEI (aeróbico intensivo/umbral), PAE (potencia aeróbica/VO2 máx), R400, R200 y R100 (ritmos de competición), Potencia (velocidad máxima/aláctico), Kick sets, UW (subacuático) y Cool down, y nómbralos así en los bloques. En carrera y ciclismo usa la nomenclatura de intensidades de sus sesiones de referencia (R0 recuperación … R6 máxima) y el formato de series habitual (p. ej. "8x50 d/10\\" aletas: 25 técnica + 25 nado").
 Reglas:
 - Usa SIEMPRE que puedas ejercicios de la biblioteca, indicando su id en "ej" y copiando su nombre exacto. Solo si ninguno sirve, propone uno nuevo con "ej": null y "nuevo": true.
 - Solo ejercicios que el deportista pueda hacer solo con el material indicado.
