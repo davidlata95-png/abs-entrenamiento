@@ -224,6 +224,8 @@ async function entrarCoach(clave, silencioso) {
     if (!j.ok) { if (j.error === 'clave') { LS.del('abs2-auth'); return silencioso ? pantallaAcceso('coach') : ($('#err').textContent = 'Clave incorrecta.'); } throw 0; }
     S.auth = { modo: 'coach', clave }; LS.set('abs2-auth', S.auth);
     for (const t of Object.keys(D)) D[t] = j.datos[t] || [];
+    // Series escritas (transcritas de las imágenes de Instagram): se añaden a su entrenamiento de referencia si no tiene una propia
+    (j.datos.serie || []).forEach(x => { const r = D.referencia.find(d => d.id === x.id); if (r && !r.serie && x.serie) r.serie = x.serie; });
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
