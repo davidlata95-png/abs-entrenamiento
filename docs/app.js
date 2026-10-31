@@ -227,7 +227,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); marcoCoach(); vaciarCola();
+    migrarCats(); marcoCoach(); vaciarCola(); importarFastForce();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -247,6 +247,18 @@ function renderCoach() {
   LS.set('abs2-cache', { modo: 'coach', datos: D });
   const m = $('#main');
   ({ dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, bd: vBaseDatos, ia: vIA, carga: vCarga })[S.tab](m);
+}
+
+// Paso único: carga en el grupo Preparación física CDNS las 11 sesiones del mesociclo Fast Force (23/11–16/12),
+// justo después del High Force. Solo añade las que faltan, así que no pisa nada.
+async function importarFastForce() {
+  if (LS.get('abs2-mig-fastforce', false)) return;
+  try {
+    const docs = await (await fetch('migracion-fast-force.json', { cache: 'no-store' })).json();
+    const faltan = docs.filter(x => !byId(x.tipo, x.doc.id));
+    if (faltan.length) { guardar(faltan); renderCoach(); toast('Fast Force cargado en Preparación física CDNS (23/11–16/12)', 3500); }
+    LS.set('abs2-mig-fastforce', true);
+  } catch (e) {}
 }
 
 /* ---------- Deportistas ---------- */
