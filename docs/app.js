@@ -699,7 +699,7 @@ const TIPOS_REF = {
 function vBaseDatos(m) {
   const f = S.ui.bd = S.ui.bd || { dep: 'natacion', tipo: '', origen: '', q: '' };
   const todos = D.referencia;
-  const lista = todos.filter(r => r.deporte === f.dep && (!f.tipo || r.tipo === f.tipo) && (!f.origen || r.origen === f.origen) && (!f.q || norm([r.titulo, r.texto, r.autor].join(' ')).includes(norm(f.q))))
+  const lista = todos.filter(r => r.deporte === f.dep && (!f.tipo || r.tipo === f.tipo) && (!f.origen || r.origen === f.origen) && (!f.q || norm([r.titulo, r.serie, r.texto, r.autor].join(' ')).includes(norm(f.q))))
     .sort((a, b) => (TIPOS_REF[a.deporte] || []).indexOf(a.tipo) - (TIPOS_REF[b.deporte] || []).indexOf(b.tipo) || String(a.titulo).localeCompare(String(b.titulo), 'es'));
   const n = k => todos.filter(r => r.deporte === k).length;
   const origenes = [...new Set(todos.map(r => r.origen).filter(Boolean))].sort();
@@ -729,14 +729,16 @@ function vBaseDatos(m) {
   };
   $('#nr').onclick = () => editRef({ id: uid(), origen: 'Propio', deporte: f.dep, tipo: f.tipo || (TIPOS_REF[f.dep] || [''])[0], titulo: '', texto: '' }, true);
   m.querySelectorAll('[data-re]').forEach(b => b.onclick = () => editRef(clone(byId('referencia', b.dataset.re))));
+  m.querySelectorAll('[data-rcp]').forEach(b => b.onclick = async () => { const r = byId('referencia', b.dataset.rcp); try { await navigator.clipboard.writeText(r.serie || r.texto || ''); toast('Copiado'); } catch (e) { toast('No se pudo copiar'); } });
   m.querySelectorAll('[data-rmas]').forEach(b => b.onclick = () => { const t = b.dataset.rmas; S.ui.bdMas = S.ui.bdMas || {}; S.ui.bdMas[t] = ((S.ui.bdMas[t]) || 12) + 12; const y = scrollY; vBaseDatos(m); scrollTo(0, y); });
 }
-// Tarjeta de la base de datos: se ve el set directamente (la publicación de Instagram o el texto de la sesión)
+// Tarjeta de la base de datos: el entrenamiento escrito en texto, listo para copiar
 const igCode = u => (String(u || '').match(/instagram\.com\/(?:p|reel)\/([\w-]+)/) || [])[1];
 function refCard(r) {
-  const ig = igCode(r.url);
-  const pie = `<div class="row small muted" style="justify-content:space-between;gap:6px"><span>${esc([r.origen === 'Instagram' && r.autor ? '@' + r.autor : r.origen, r.medida].filter(Boolean).join(' · '))}</span><span>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a> · ` : ''}<button class="lnk" data-re="${r.id}">Editar</button></span></div>`;
-  if (ig) return `<div class="card refc">${pie}<iframe class="igf" src="https://www.instagram.com/p/${ig}/embed/" loading="lazy" title="${esc(r.titulo)}" allowtransparency="true"></iframe>${r.texto && !/^\(Sin texto/.test(r.texto) ? `<details><summary class="small muted">Texto de la publicación</summary><pre class="txt">${esc(r.texto)}</pre></details>` : ''}</div>`;
+  const pie = `<div class="row small muted" style="justify-content:space-between;gap:6px"><span>${esc([r.origen === 'Instagram' && r.autor ? '@' + r.autor : r.origen, r.medida].filter(Boolean).join(' · '))}</span><span><button class="lnk" data-rcp="${r.id}">Copiar</button> · ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a> · ` : ''}<button class="lnk" data-re="${r.id}">Editar</button></span></div>`;
+  const cap = r.texto && !/^\(Sin texto/.test(r.texto) ? r.texto : '';
+  if (r.serie) return `<div class="card refc">${pie}<pre class="txt">${esc(r.serie)}</pre>${cap && cap.trim() !== r.serie.trim() ? `<details><summary class="small muted">Texto de la publicación</summary><pre class="txt">${esc(cap)}</pre></details>` : ''}</div>`;
+  if (igCode(r.url)) return `<div class="card refc">${pie}<p class="small muted" style="margin:0">Sin serie escrita en la publicación. Texto del autor:</p><pre class="txt">${esc(cap || r.titulo)}</pre></div>`;
   return `<div class="card refc">${pie}<b>${esc(r.titulo)}</b><pre class="txt">${esc(r.texto)}</pre></div>`;
 }
 function editRef(r, nuevo) {
@@ -745,11 +747,12 @@ function editRef(r, nuevo) {
     <div class="grid2"><label class="l">Deporte<select class="f" id="rfd">${Object.entries(DEP).map(([k, v]) => `<option value="${k}" ${k === r.deporte ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label>
     <label class="l">Contenido que trabaja<input class="f" id="rfc" value="${esc(r.tipo || '')}" list="tiposRef"></label></div>
     <datalist id="tiposRef">${Object.values(TIPOS_REF).flat().map(t => `<option value="${esc(t)}">`).join('')}</datalist>
-    <label class="l">Entrenamiento<textarea class="f mono" id="rfx" rows="12">${esc(r.texto)}</textarea></label>
+    <label class="l">Entrenamiento escrito<textarea class="f mono" id="rfs" rows="12">${esc(r.serie || '')}</textarea></label>
+    <label class="l">${r.origen === 'Instagram' ? 'Texto de la publicación' : 'Notas'}<textarea class="f mono" id="rfx" rows="${r.origen === 'Instagram' ? 5 : 8}">${esc(r.texto)}</textarea></label>
     <div class="grid2"><label class="l">Origen<input class="f" id="rfo" value="${esc(r.origen || '')}"></label><label class="l">Enlace<input class="f" id="rfu" value="${esc(r.url || '')}"></label></div></div>
     ${nuevo ? '' : '<button class="btn danger" id="rfdel">Borrar de la base de datos</button>'}`,
     () => {
-      Object.assign(r, { titulo: $('#rft').value.trim(), deporte: $('#rfd').value, tipo: $('#rfc').value.trim(), texto: $('#rfx').value, origen: $('#rfo').value.trim(), url: $('#rfu').value.trim() });
+      Object.assign(r, { titulo: $('#rft').value.trim(), deporte: $('#rfd').value, tipo: $('#rfc').value.trim(), serie: $('#rfs').value.trim(), texto: $('#rfx').value, origen: $('#rfo').value.trim(), url: $('#rfu').value.trim() });
       if (!r.titulo) return toast('Falta el título'), false;
       guardar([{ tipo: 'referencia', doc: r }]); renderCoach();
     });
@@ -823,7 +826,7 @@ function configIA(despues) {
 function refsParecidas(f, n = 12) {
   const pal = new Set(norm([f.objetivo, f.notas].join(' ')).split(/[^a-z0-9]+/).filter(w => w.length > 3));
   return D.referencia.filter(r => r.deporte === f.deporte)
-    .map(r => ({ r, p: norm([r.titulo, r.tipo, r.texto].join(' ')).split(/[^a-z0-9]+/).filter(w => pal.has(w)).length + Math.random() }))
+    .map(r => ({ r, p: norm([r.titulo, r.tipo, r.serie, r.texto].join(' ')).split(/[^a-z0-9]+/).filter(w => pal.has(w)).length + Math.random() }))
     .sort((a, b) => b.p - a.p).slice(0, n).map(x => x.r);
 }
 const IA_SISTEMA = `Eres un preparador físico y entrenador de resistencia con formación universitaria en Ciencias del Deporte. Diseñas planes basados en la evidencia científica actual (sobrecarga progresiva, especificidad, periodización por bloques u ondulante, autorregulación con RPE/RIR, gestión de la fatiga, puesta a punto antes de competiciones o exámenes, prevención de lesiones).
@@ -841,7 +844,7 @@ Reglas:
 async function generarPlanIA(f, key) {
   const lib = D.ejercicio.filter(e => e.deporte === f.deporte || (f.deporte !== 'fuerza' && e.deporte === 'fuerza')).sort(ordenEj)
     .map(e => `${e.id} | ${e.deporte} | ${e.cat || ''} | ${e.nombre}`).join('\n');
-  const refs = refsParecidas(f).map(r => `### ${r.titulo} (${r.tipo}${r.medida ? ', ' + r.medida : ''})\n${String(r.texto).slice(0, 1200)}`).join('\n\n');
+  const refs = refsParecidas(f).map(r => `### ${r.titulo} (${r.tipo}${r.medida ? ', ' + r.medida : ''})\n${String(r.serie || r.texto).slice(0, 1200)}`).join('\n\n');
   const hoy = key2(new Date());
   const prompt = `Prepara un plan de ${f.semanas} ${f.semanas === 1 ? 'semana' : 'semanas'} de ${DEP[f.deporte].n.toLowerCase()}.
 Objetivo: ${f.objetivo}
