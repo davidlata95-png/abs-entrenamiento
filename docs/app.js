@@ -702,7 +702,7 @@ function vBaseDatos(m) {
   const f = S.ui.bd = S.ui.bd || { dep: 'natacion', tipo: '', origen: '', q: '' };
   const todos = D.referencia;
   const lista = todos.filter(r => r.deporte === f.dep && (!f.tipo || r.tipo === f.tipo) && (!f.origen || r.origen === f.origen) && (!f.q || norm([r.titulo, r.serie, r.texto, r.autor].join(' ')).includes(norm(f.q))))
-    .sort((a, b) => (TIPOS_REF[a.deporte] || []).indexOf(a.tipo) - (TIPOS_REF[b.deporte] || []).indexOf(b.tipo) || String(a.titulo).localeCompare(String(b.titulo), 'es'));
+    .sort((a, b) => (TIPOS_REF[a.deporte] || []).indexOf(a.tipo) - (TIPOS_REF[b.deporte] || []).indexOf(b.tipo) || (!a.serie && igCode(a.url)) - (!b.serie && igCode(b.url)) || String(a.titulo).localeCompare(String(b.titulo), 'es'));
   const n = k => todos.filter(r => r.deporte === k).length;
   const origenes = [...new Set(todos.map(r => r.origen).filter(Boolean))].sort();
   const grupos = []; lista.forEach(r => { const g = grupos[grupos.length - 1]; if (g && g.tipo === r.tipo) g.l.push(r); else grupos.push({ tipo: r.tipo, l: [r] }); });
