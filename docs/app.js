@@ -431,30 +431,33 @@ function hechaPor(s, d) {
   return actividadesDe(d.id, s.fecha).some(a => tipos.includes(a.tipo)) ? 'strava' : '';
 }
 function vInicio(m) {
-  const hoy = key(today()), lun = key(monday(today())), dom = key(addDays(monday(today()), 6)), hace28 = key(addDays(today(), -27));
+  const hoy = key(today());
+  S.ui.semIni = S.ui.semIni || key(monday(today()));
+  const lunD = parseKey(S.ui.semIni), lun = key(lunD), dom = key(addDays(lunD, 6)), estaSem = lun === key(monday(today()));
+  const dias = Array.from({ length: 7 }, (_, i) => key(addDays(lunD, i)));
   const filas = depsOrd().filter(d => !d.archivado).map(d => {
-    const ss = sesionesDe(d);
-    const deHoy = ss.filter(s => s.fecha === hoy);
-    const sem = ss.filter(s => s.fecha >= lun && s.fecha <= dom), semHasta = sem.filter(s => s.fecha <= hoy);
-    const ult = ss.filter(s => s.fecha >= hace28 && s.fecha <= hoy);
-    const n = l => l.filter(s => hechaPor(s, d)).length;
-    const pct = ult.length ? Math.round(n(ult) / ult.length * 100) : null;
-    const prox = ss.filter(s => s.fecha > hoy).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
-    return { d, deHoy, sem, semHechas: n(sem), semHasta, ult, ultHechas: n(ult), pct, prox, activo: ss.some(s => s.fecha >= hace28) };
-  }).filter(x => x.activo || x.deHoy.length)
-    .sort((a, b) => (b.deHoy.length > 0) - (a.deHoy.length > 0) || a.d.nombre.localeCompare(b.d.nombre, 'es'));
-  const entrenanHoy = filas.filter(x => x.deHoy.length), hechosHoy = entrenanHoy.filter(x => x.deHoy.every(s => hechaPor(s, x.d))).length;
+    const ss = sesionesDe(d), sem = ss.filter(s => s.fecha >= lun && s.fecha <= dom);
+    const hechas = sem.filter(s => hechaPor(s, d)).length;
+    return { d, sem, hechas, deHoy: ss.filter(s => s.fecha === hoy), pct: sem.length ? Math.round(hechas / sem.length * 100) : null };
+  }).filter(x => x.sem.length || x.d.grupos?.length || D.sesion.some(s => s.dep === x.d.id && s.fecha >= key(addDays(lunD, -28))))
+    .sort((a, b) => (estaSem ? (b.deHoy.length > 0) - (a.deHoy.length > 0) : 0) || (b.sem.length > 0) - (a.sem.length > 0) || a.d.nombre.localeCompare(b.d.nombre, 'es'));
+  const tot = filas.reduce((a, x) => a + x.sem.length, 0), hech = filas.reduce((a, x) => a + x.hechas, 0);
+  const entrenanHoy = filas.filter(x => x.deHoy.length);
   const color = p => p === null ? 'var(--faint)' : p >= 80 ? 'var(--ok)' : p >= 50 ? 'var(--s-carrera)' : 'var(--bad)';
-  m.innerHTML = `<div class="kpis k3"><div class="kpi"><small>Entrenan hoy</small><b>${entrenanHoy.length}</b></div><div class="kpi"><small>Ya han registrado hoy</small><b>${hechosHoy}</b> <span class="small muted">de ${entrenanHoy.length}</span></div><div class="kpi"><small>Deportistas activos</small><b>${filas.length}</b></div></div>
-    <p class="small muted" style="margin:0">${fmtLong(today())} · % de sesiones hechas en las últimas 4 semanas (registradas en la app o con actividad de Strava del mismo deporte). Toca a alguien para ver y editar su semana.</p>
-    ${filas.length ? `<div class="list">${filas.map(x => `<button class="item urow" data-u="${x.d.id}">
-      <div class="avatar">${esc(ini(x.d.nombre))}</div>
-      <div class="t"><b>${esc(x.d.nombre)}</b>
-        <small>${x.deHoy.length ? `<span class="hoyt">Hoy:</span> ${x.deHoy.map(s => `<span class="tag" style="--c:${DEP[s.deporte]?.c}">${hechaPor(s, x.d) ? '✓ ' : ''}${esc(s.titulo || DEP[s.deporte]?.n)}</span>`).join(' ')}` : x.prox ? `Descansa hoy · próxima: ${fmtD(parseKey(x.prox.fecha))} ${esc(x.prox.titulo || DEP[x.prox.deporte]?.n || '')}` : 'Sin sesiones próximas'}</small>
-        <small class="muted">Esta semana: ${x.semHechas} de ${x.sem.length} hechas</small></div>
-      <div class="pct" style="--c:${color(x.pct)};--p:${x.pct || 0}"><b>${x.pct === null ? '—' : x.pct + '%'}</b><small>${x.ultHechas}/${x.ult.length}</small></div></button>`).join('')}</div>`
-      : '<div class="empty">Nadie tiene sesiones en las últimas 4 semanas ni hoy.</div>'}`;
-  m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { S.ui.dep = b.dataset.u; S.ui.semana = key(monday(today())); S.tab = 'cal'; marcoCoach(); scrollTo(0, 0); });
+  m.innerHTML = `<div class="stepper"><button id="iwP" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lunD)} – ${fmtD(addDays(lunD, 6))}${estaSem ? ' · esta semana' : ''}</b><span>${hech} de ${tot} sesiones hechas${tot ? ` (${Math.round(hech / tot * 100)} %)` : ''}${estaSem ? ` · hoy entrenan ${entrenanHoy.length}` : ''}</span></div><button id="iwN" aria-label="Semana siguiente">›</button></div>
+    ${!estaSem ? '<button class="btn sm ghost" id="iwh" style="align-self:center">Volver a esta semana</button>' : ''}
+    ${filas.length ? `<div class="list">${filas.map(x => `<div class="card urow2">
+      <button class="uhead" data-u="${x.d.id}"><div class="avatar">${esc(ini(x.d.nombre))}</div>
+        <div class="t"><b>${esc(x.d.nombre)}</b><small>${x.sem.length ? `${x.hechas} de ${x.sem.length} sesiones hechas` : 'Sin sesiones esta semana'}${estaSem && x.deHoy.length ? ` · <span class="hoyt">entrena hoy</span>` : ''}</small></div>
+        <div class="pct" style="--c:${color(x.pct)};--p:${x.pct || 0}"><b>${x.pct === null ? '—' : x.pct + '%'}</b><small>${x.hechas}/${x.sem.length}</small></div></button>
+      <div class="wk7">${dias.map((k, i) => { const l = x.sem.filter(s => s.fecha === k); return `<div class="d7 ${k === hoy ? 'hoy' : ''} ${k < hoy ? 'pas' : ''}"><span>${DIAS[i].slice(0, 1)}<b>${parseKey(k).getDate()}</b></span>${l.map(s => { const h = hechaPor(s, x.d); return `<button class="s7 ${h ? 'ok' : k < hoy ? 'no' : ''}" style="--c:${DEP[s.deporte]?.c}" data-vs="${s.id}|${x.d.id}" title="${esc(s.titulo || DEP[s.deporte]?.n)}">${h ? '✓ ' : ''}${esc(s.titulo || DEP[s.deporte]?.n)}</button>`; }).join('')}</div>`; }).join('')}</div></div>`).join('')}</div>`
+      : '<div class="empty">No hay deportistas con sesiones esta semana.</div>'}
+    <p class="small muted" style="margin:0">Una sesión cuenta como hecha si la ha registrado en la app (RPE, kilos o marcada) o si ese día tiene una actividad de Strava del mismo deporte. Toca un nombre para ir a su calendario y editar la semana, o una sesión para ver lo que hizo.</p>`;
+  $("#iwP").onclick = () => { S.ui.semIni = key(addDays(lunD, -7)); vInicio(m); };
+  $("#iwN").onclick = () => { S.ui.semIni = key(addDays(lunD, 7)); vInicio(m); };
+  const h = $('#iwh'); if (h) h.onclick = () => { S.ui.semIni = null; vInicio(m); };
+  m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { S.ui.dep = b.dataset.u; S.ui.semana = lun; S.tab = 'cal'; marcoCoach(); scrollTo(0, 0); });
+  m.querySelectorAll('[data-vs]').forEach(b => b.onclick = () => { const [sid, did] = b.dataset.vs.split('|'); verSesion(byId('sesion', sid), did); });
 }
 
 /* ---------- Deportistas ---------- */
