@@ -369,6 +369,7 @@ async function entrarCoach(clave, silencioso) {
 }
 // Iconos de trazo (24×24) para la barra lateral / inferior
 const ICO = {
+  inicio: '<path d="M4 10.5L12 4l8 6.5V19a1 1 0 01-1 1h-4.5v-6h-5v6H5a1 1 0 01-1-1z"/>',
   cal: '<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   dep: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
   grupos: '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M15 15c2.5-.4 4.6.8 5.4 3.6"/>',
@@ -385,9 +386,9 @@ const ICO = {
 };
 const ico = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k] || ''}</svg>`;
 // Las cuatro primeras van siempre en la barra del móvil; el resto, en «Más»
-const TABS_C = [['cal', 'Calendario'], ['dep', 'Deportistas'], ['grupos', 'Grupos'], ['bib', 'Biblioteca'], ['planes', 'Planes'], ['bd', 'Base de datos'], ['ia', 'Asistente IA'], ['carga', 'Carga']];
+const TABS_C = [['inicio', 'Inicio'], ['cal', 'Calendario'], ['dep', 'Deportistas'], ['grupos', 'Grupos'], ['bib', 'Biblioteca'], ['planes', 'Planes'], ['bd', 'Base de datos'], ['ia', 'Asistente IA'], ['carga', 'Carga']];
 function marcoCoach() {
-  S.tab = S.tab || LS.get('abs2-tab', 'cal');
+  S.tab = S.tab || 'inicio';
   const tit = TABS_C.find(t => t[0] === S.tab)?.[1] || '';
   document.body.innerHTML = `<div class="shell"><aside class="side" aria-label="Secciones"><div class="logo">ABS</div>
       <nav>${TABS_C.map(([k, n], i) => `<button type="button" class="${i > 3 ? 'extra' : ''}" data-tab="${k}" aria-pressed="${S.tab === k}" title="${n}">${ico(k)}<span>${n}</span></button>`).join('')}
@@ -406,7 +407,7 @@ function marcoCoach() {
 function renderCoach() {
   LS.set('abs2-cache', { modo: 'coach', datos: D });
   const m = $('#main');
-  ({ dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, bd: vBaseDatos, ia: vIA, carga: vCarga })[S.tab](m);
+  ({ inicio: vInicio, dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, bd: vBaseDatos, ia: vIA, carga: vCarga })[S.tab](m);
 }
 
 // Paso único: carga en el grupo Preparación física CDNS las 11 sesiones del mesociclo Fast Force (23/11–16/12),
@@ -419,6 +420,41 @@ async function importarFastForce() {
     if (faltan.length) { guardar(faltan); renderCoach(); toast('Fast Force cargado en Preparación física CDNS (23/11–16/12)', 3500); }
     LS.set('abs2-mig-fastforce', true);
   } catch (e) {}
+}
+
+/* ---------- Inicio: quién entrena hoy y cómo va cada uno ---------- */
+const sesionesDe = d => D.sesion.filter(s => s.dep === d.id || (s.grupo && (d.grupos || []).includes(s.grupo)));
+function hechaPor(s, d) {
+  const r = s.grupo ? D.registro.find(x => x.ses === s.id && x.dep === d.id) : byId('registro', s.id);
+  if (r && ((r.rpe !== undefined && r.rpe !== '') || Object.values(r.sets || {}).some(v => v.ok || v.kg) || Object.values(r.hecho || {}).some(Boolean))) return 'reg';
+  const tipos = Object.entries(DEP_STRAVA).filter(([, v]) => v === s.deporte).map(([k]) => k);
+  return actividadesDe(d.id, s.fecha).some(a => tipos.includes(a.tipo)) ? 'strava' : '';
+}
+function vInicio(m) {
+  const hoy = key(today()), lun = key(monday(today())), dom = key(addDays(monday(today()), 6)), hace28 = key(addDays(today(), -27));
+  const filas = depsOrd().filter(d => !d.archivado).map(d => {
+    const ss = sesionesDe(d);
+    const deHoy = ss.filter(s => s.fecha === hoy);
+    const sem = ss.filter(s => s.fecha >= lun && s.fecha <= dom), semHasta = sem.filter(s => s.fecha <= hoy);
+    const ult = ss.filter(s => s.fecha >= hace28 && s.fecha <= hoy);
+    const n = l => l.filter(s => hechaPor(s, d)).length;
+    const pct = ult.length ? Math.round(n(ult) / ult.length * 100) : null;
+    const prox = ss.filter(s => s.fecha > hoy).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+    return { d, deHoy, sem, semHechas: n(sem), semHasta, ult, ultHechas: n(ult), pct, prox, activo: ss.some(s => s.fecha >= hace28) };
+  }).filter(x => x.activo || x.deHoy.length)
+    .sort((a, b) => (b.deHoy.length > 0) - (a.deHoy.length > 0) || a.d.nombre.localeCompare(b.d.nombre, 'es'));
+  const entrenanHoy = filas.filter(x => x.deHoy.length), hechosHoy = entrenanHoy.filter(x => x.deHoy.every(s => hechaPor(s, x.d))).length;
+  const color = p => p === null ? 'var(--faint)' : p >= 80 ? 'var(--ok)' : p >= 50 ? 'var(--s-carrera)' : 'var(--bad)';
+  m.innerHTML = `<div class="kpis k3"><div class="kpi"><small>Entrenan hoy</small><b>${entrenanHoy.length}</b></div><div class="kpi"><small>Ya han registrado hoy</small><b>${hechosHoy}</b> <span class="small muted">de ${entrenanHoy.length}</span></div><div class="kpi"><small>Deportistas activos</small><b>${filas.length}</b></div></div>
+    <p class="small muted" style="margin:0">${fmtLong(today())} · % de sesiones hechas en las últimas 4 semanas (registradas en la app o con actividad de Strava del mismo deporte). Toca a alguien para ver y editar su semana.</p>
+    ${filas.length ? `<div class="list">${filas.map(x => `<button class="item urow" data-u="${x.d.id}">
+      <div class="avatar">${esc(ini(x.d.nombre))}</div>
+      <div class="t"><b>${esc(x.d.nombre)}</b>
+        <small>${x.deHoy.length ? `<span class="hoyt">Hoy:</span> ${x.deHoy.map(s => `<span class="tag" style="--c:${DEP[s.deporte]?.c}">${hechaPor(s, x.d) ? '✓ ' : ''}${esc(s.titulo || DEP[s.deporte]?.n)}</span>`).join(' ')}` : x.prox ? `Descansa hoy · próxima: ${fmtD(parseKey(x.prox.fecha))} ${esc(x.prox.titulo || DEP[x.prox.deporte]?.n || '')}` : 'Sin sesiones próximas'}</small>
+        <small class="muted">Esta semana: ${x.semHechas} de ${x.sem.length} hechas</small></div>
+      <div class="pct" style="--c:${color(x.pct)};--p:${x.pct || 0}"><b>${x.pct === null ? '—' : x.pct + '%'}</b><small>${x.ultHechas}/${x.ult.length}</small></div></button>`).join('')}</div>`
+      : '<div class="empty">Nadie tiene sesiones en las últimas 4 semanas ni hoy.</div>'}`;
+  m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { S.ui.dep = b.dataset.u; S.ui.semana = key(monday(today())); S.tab = 'cal'; marcoCoach(); scrollTo(0, 0); });
 }
 
 /* ---------- Deportistas ---------- */
@@ -1351,7 +1387,7 @@ async function stravaSyncCoach(forzar) {
     const j = await api({ a: 'coach', op: 'stravaSync', clave: S.auth.clave, forzar: forzar ? 1 : 0 });
     if (!j.ok) return; D.actividad = j.actividad || []; S.stravaE = j.estado;
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    if (['cal', 'dep'].includes(S.tab) && !$('#ed')?.open) renderCoach();
+    if (['inicio', 'cal', 'dep'].includes(S.tab) && !$('#ed')?.open) renderCoach();
     if (forzar) toast(j.nuevas ? `${j.nuevas} actividades nuevas de Strava` : 'Strava al día');
   } catch (e) {}
 }
