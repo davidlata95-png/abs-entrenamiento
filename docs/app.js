@@ -411,11 +411,12 @@ async function importarFastForce() {
 function vDeportistas(m) {
   const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const arch = D.deportista.filter(d => d.archivado);
-  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
+  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><label class="btn" style="cursor:pointer">Importar<input type="file" id="dimp" accept=".json,application/json" hidden></label><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
     ${deps.length ? `<div class="list">${deps.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b><small>${esc([...(d.grupos || []).map(g => byId('grupo', g)?.nombre), d.grupo, (d.deportes || []).map(x => DEP[x]?.n).join(' · ')].filter(Boolean).join(' · '))}</small></div><span class="chip mono">${d.pin ? 'PIN ' + esc(d.pin) : 'Sin PIN'}</span></button>`).join('')}</div>` : '<div class="empty">Aún no hay deportistas. Crea el primero para asignarle sesiones o un plan.</div>'}
     ${arch.length ? `<details><summary class="muted small">Archivados (${arch.length})</summary><div class="list" style="margin-top:8px">${arch.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b></div></button>`).join('')}</div></details>` : ''}`;
   $('#nd').onclick = () => editDeportista();
   $('#cfS').onclick = () => configStrava();
+  $('#dimp').onchange = e => { const fi = e.target.files[0]; e.target.value = ''; if (fi) importarArchivo(fi); };
   m.querySelectorAll('[data-d]').forEach(b => b.onclick = () => editDeportista(byId('deportista', b.dataset.d)));
 }
 // Ritmo R3 (umbral) para pasar distancias a tiempo y calcular ECOs
@@ -1274,6 +1275,23 @@ async function entrarDep(id, pin, silencioso) {
 function aplicarDep(j) {
   S.yo = j.dep; D.deportista = [j.dep]; D.grupo = j.grupos || []; D.sesion = j.sesiones; D.registro = j.registros; D.ejercicio = j.ejercicios;
   D.actividad = j.actividades || []; S.strava = j.strava || {};
+}
+// Importa un archivo con deportistas y sus sesiones (p. ej. lo exportado de Train2Go): [{tipo, doc}, …]
+async function importarArchivo(fi) {
+  let arr;
+  try { arr = JSON.parse(await fi.text()); } catch (e) { return toast('Ese archivo no se puede leer'); }
+  const TIPOS = ['deportista', 'grupo', 'sesion', 'plan', 'ejercicio', 'referencia'];
+  const docs = (Array.isArray(arr) ? arr : []).filter(x => x && TIPOS.includes(x.tipo) && x.doc?.id);
+  if (!docs.length) return toast('El archivo no tiene deportistas ni sesiones');
+  const nuevos = docs.filter(x => !byId(x.tipo, x.doc.id)), ya = docs.length - nuevos.length;
+  const cuenta = t => nuevos.filter(x => x.tipo === t).length;
+  const deps = nuevos.filter(x => x.tipo === 'deportista').map(x => x.doc);
+  const mismoNombre = deps.filter(d => D.deportista.some(o => norm(o.nombre) === norm(d.nombre)));
+  if (!nuevos.length) return toast('Ya estaba todo importado');
+  const txt = `Se van a añadir ${cuenta('deportista')} deportistas y ${cuenta('sesion')} sesiones${cuenta('plan') ? `, ${cuenta('plan')} planes` : ''}${cuenta('ejercicio') ? `, ${cuenta('ejercicio')} ejercicios` : ''}${cuenta('referencia') ? `, ${cuenta('referencia')} entrenamientos escritos` : ''}.${ya ? ` ${ya} ya estaban y no se tocan.` : ''}${mismoNombre.length ? `\n\nOjo: ya hay alguien llamado ${mismoNombre.map(d => d.nombre).join(', ')}. Se creará otra ficha.` : ''}\n\n¿Importar?`;
+  if (!confirm(txt)) return;
+  for (let i = 0; i < nuevos.length; i += 25) guardar(nuevos.slice(i, i + 25));
+  renderCoach(); toast(`Importado: ${cuenta('deportista')} deportistas y ${cuenta('sesion')} sesiones`, 3500);
 }
 /* ---------- Strava ---------- */
 const STRAVA_LOGO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M15.4 17.9l-2.1-4.1h-3.1l5.2 10.2 5.1-10.2h-3.1zM10.2 0L3.3 13.8h4.1l2.8-5.5 2.8 5.5h4.1z"/></svg>';
