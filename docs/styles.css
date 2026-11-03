@@ -288,3 +288,10 @@ table.data th.n{text-align:right}
 @media (max-width:820px){.calbar>select{max-width:none!important;flex:1 1 100%}.calbar>.row{justify-content:flex-start!important}}
 .masmenu[hidden]{display:none}
 #vd.h .vbox{width:min(720px,92vw)}#vd.h .vframe{aspect-ratio:16/9}
+.vres{display:flex;flex-direction:column;gap:10px}
+.kv{display:flex;flex-direction:column;align-items:center;background:var(--card2);border-radius:10px;padding:4px 10px;min-width:54px}.kv small{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase}.kv b{font-family:var(--f-num)}
+.bubble{margin:0;background:color-mix(in srgb,var(--accent) 10%,var(--card));border-radius:4px 14px 14px 14px;padding:8px 12px;font-size:14px;white-space:pre-wrap}
+table.sets td.kg{font-weight:700}
+.act{display:flex;flex-direction:column;gap:3px;text-decoration:none;border-radius:14px;padding:10px 12px;background:color-mix(in srgb,#fc4c02 7%,var(--card));border:1px solid color-mix(in srgb,#fc4c02 25%,var(--line))}
+.act .src{font-size:11px;font-weight:800;color:#fc4c02;text-transform:uppercase;letter-spacing:.05em}
+.act .nums{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--f-num);font-size:14px}

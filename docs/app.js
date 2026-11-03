@@ -157,7 +157,7 @@ function leerT2G(txt, dep, r3s) {
 /* ---------- Estado ---------- */
 const S = {
   auth: LS.get('abs2-auth', null), // {modo:'coach', clave} | {modo:'dep', id, pin, nombre}
-  datos: { deportista: [], grupo: [], ejercicio: [], sesion: [], plan: [], registro: [], referencia: [] },
+  datos: { deportista: [], grupo: [], ejercicio: [], sesion: [], plan: [], registro: [], referencia: [], actividad: [] },
   lista: null, tab: null, ui: {}, guardando: 0,
 };
 const D = S.datos;
@@ -545,7 +545,7 @@ function vCalendario(m) {
   m.querySelectorAll('[data-add]').forEach(b => b.onclick = () => nuevaSesion(b.dataset.add));
   m.querySelectorAll('[data-wk]').forEach(b => b.onclick = () => { S.ui.semana = b.dataset.wk; renderCoach(); });
   const wa = m.querySelector('.season [aria-current]'); if (wa) wa.scrollIntoView({ block: 'nearest', inline: 'center' });
-  m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => editSesion(byId('sesion', b.dataset.s)));
+  m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => verSesion(byId('sesion', b.dataset.s)));
 }
 // Temporada: 20 semanas alrededor de la que se ve, coloreadas por el plan (fase) de sus sesiones
 const FASE_C = ['#8fd0c9', '#b9a6ee', '#f2b27c', '#9cc3f0', '#e9a2b8', '#b5d98f', '#f0d27a'];
@@ -568,7 +568,7 @@ function scard(s, plan) {
   const dep = S.auth?.modo === 'dep';
   const r = plan ? null : dep ? regDe(s) : s.grupo ? null : byId('registro', s.id);
   const nReg = !plan && !dep && s.grupo ? D.registro.filter(x => x.ses === s.id && (ua(x) || Object.values(x.sets || {}).some(v => v.ok || v.kg))).length : 0;
-  return `<button class="scard" style="--c:${DEP[s.deporte]?.c || 'var(--muted)'}" data-s="${s.id}" ${plan ? `data-ps="${s.id}"` : ''}><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b><small>${esc(DEP[s.deporte]?.n || '')}${s.duracion ? ` · ${s.duracion}'` : ''}</small>${conEcos(s.deporte) && ecoDe(s) ? `<small class="mono">${ecoTxt(ecoDe(s))}</small>` : ''}${r && r.rpe ? `<small class="ok">✓ RPE ${r.rpe} · ${ua(r)} UA</small>` : ''}${nReg ? `<small class="ok">✓ ${nReg} de ${miembros(byId('grupo', s.grupo)).length} han registrado</small>` : ''}</button>`;
+  return `<button class="scard" style="--c:${DEP[s.deporte]?.c || 'var(--muted)'}" data-s="${s.id}" ${plan ? `data-ps="${s.id}"` : ''}><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b><small>${esc(DEP[s.deporte]?.n || '')}${s.duracion ? ` · ${s.duracion}'` : ''}</small>${conEcos(s.deporte) && ecoDe(s) ? `<small class="mono">${ecoTxt(ecoDe(s))}</small>` : ''}${r && r.rpe ? `<small class="ok">✓ RPE ${r.rpe} · ${ua(r)} UA</small>` : ''}${!plan && !dep && r ? (() => { const nc = Object.values(r.coment || {}).filter(Boolean).length + (r.nota ? 1 : 0), nk = Object.values(r.sets || {}).filter(v => v.kg).length; return nk || nc ? `<small class="ok">${nk ? `✓ ${nk} series con kilos` : ''}${nk && nc ? ' · ' : ''}${nc ? `💬 ${nc}` : ''}</small>` : ''; })() : ''}${nReg ? `<small class="ok">✓ ${nReg} de ${miembros(byId('grupo', s.grupo)).length} han registrado</small>` : ''}</button>`;
 }
 function nuevaSesion(fecha) {
   const Q = quien(S.ui.dep), dep = Q.dep || Q.grupo;
@@ -749,6 +749,49 @@ function editSesion(s, nueva, enPlan) {
     renderCoach();
   });
   pintar();
+}
+// Vista del entrenador de una sesión ya programada: el plan tal cual lo ve el deportista, con lo que ha hecho
+// cada persona (kilos por serie, series hechas, comentarios, RPE) y lo que ha llegado de Strava ese día.
+function verSesion(s, quienId) {
+  const gente = s.grupo ? miembros(byId('grupo', s.grupo)) : [byId('deportista', s.dep)].filter(Boolean);
+  const regDep = d => d && (s.grupo ? D.registro.find(r => r.ses === s.id && r.dep === d.id) : byId('registro', s.id));
+  const conAlgo = r => r && (r.rpe !== undefined && r.rpe !== '' || Object.values(r.sets || {}).some(v => v.ok || v.kg) || Object.values(r.hecho || {}).some(Boolean) || Object.values(r.coment || {}).some(Boolean) || r.nota);
+  const sel = gente.find(d => d.id === quienId) || gente.find(d => conAlgo(regDep(d))) || gente[0];
+  const r = regDep(sel) || {}, c = DEP[s.deporte]?.c, e = conEcos(s.deporte) && ecoDe(s);
+  const acts = sel ? actividadesDe(sel.id, s.fecha) : [];
+  const presc = (it, b) => [s.deporte === 'fuerza' && it.reps && 'Reps ' + it.reps, it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'Desc. ' + it.desc].filter(Boolean).join(' · ');
+  const html = `
+    <div class="card list"><p class="muted small" style="margin:0">${s.grupo ? 'Grupo ' + esc(byId('grupo', s.grupo)?.nombre || '') + ' · ' : ''}${fmtLong(parseKey(s.fecha))} · ${DEP[s.deporte]?.n || ''}${s.duracion ? ` · ${s.duracion} min` : ''}${e ? ' · ' + ecoTxt(e) : ''}</p>
+      ${s.notas ? `<p class="small" style="margin:0;white-space:pre-wrap">${esc(s.notas)}</p>` : ''}
+      ${gente.length > 1 ? `<div class="chips">${gente.map(d => `<button type="button" class="chip" data-vq="${d.id}" aria-pressed="${d === sel}">${conAlgo(regDep(d)) ? '<i style="--c:var(--ok)"></i>' : ''}${esc(d.nombre)}</button>`).join('')}</div>` : ''}
+    </div>
+    ${sel ? `<div class="vres card"><div class="row"><div class="avatar">${esc(ini(sel.nombre))}</div><b class="grow">${esc(sel.nombre)}</b>
+      ${r.rpe !== undefined && r.rpe !== '' ? `<span class="kv"><small>RPE</small><b>${esc(r.rpe)}</b></span><span class="kv"><small>Min</small><b>${esc(r.minutos || '—')}</b></span><span class="kv"><small>Carga</small><b>${ua(r)} UA</b></span>` : '<small class="muted">Aún no ha registrado esta sesión</small>'}</div>
+      ${r.nota ? `<p class="bubble">${esc(r.nota)}</p>` : ''}
+      ${acts.map(actCard).join('')}</div>` : ''}
+    ${(s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} series` : ''}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
+      ${(b.items || []).map((it, ii) => {
+        const v = vidId(it.video), com = r.coment?.[`${bi}|${ii}`], px = presc(it, b);
+        let body = '';
+        if (it.texto) body += `<pre class="txt">${esc(it.texto)}</pre>`;
+        else if (it.filas?.length) body += `<ul class="filas">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f))}</li>`).join('')}</ul>`;
+        if (s.deporte === 'fuerza') { const n = nSeries(b, it); body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td class="kg mono">${x.kg ? esc(x.kg) + ' kg' : '<span class="muted">—</span>'}</td><td class="c">${x.ok ? `<span class="chk" aria-pressed="true" aria-label="Hecha">${CHECK}</span>` : ''}</td></tr>`; }).join('')}</tbody></table>`; }
+        if (com) body += `<p class="bubble">${esc(com)}</p>`;
+        return `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${esc(it.nombre || '')}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
+          ${v ? `<button type="button" class="thumb" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
+          ${s.deporte !== 'fuerza' && r.hecho?.[`${bi}|${ii}`] ? `<span class="chk" aria-pressed="true" aria-label="Hecho">${CHECK}</span>` : ''}</div>${body}</article>`;
+      }).join('')}</section>`).join('')}`;
+  abrirEd(s.titulo || DEP[s.deporte]?.n || 'Sesión', html, () => { setTimeout(() => editSesion(s), 0); }, 'Editar');
+  document.querySelectorAll('[data-vq]').forEach(b => b.onclick = () => verSesion(s, b.dataset.vq));
+}
+// Actividades que han llegado de Strava (o Garmin a través de Strava) para un deportista y un día
+const actividadesDe = (dep, fecha) => (D.actividad || []).filter(a => a.dep === dep && a.fecha === fecha).sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+const DEP_STRAVA = { Swim: 'natacion', Run: 'carrera', TrailRun: 'carrera', VirtualRun: 'carrera', Ride: 'ciclismo', VirtualRide: 'ciclismo', GravelRide: 'ciclismo', MountainBikeRide: 'ciclismo', WeightTraining: 'fuerza', Workout: 'otro', Walk: 'otro', Hike: 'otro' };
+function actCard(a) {
+  const dep = DEP_STRAVA[a.tipo] || 'otro', km = a.dist ? fmtDist(a.dist) : '', t = a.mov ? fmtMin(a.mov / 60) : '';
+  const ritmo = a.dist && a.mov ? (dep === 'natacion' ? fmtMin(a.mov / 60 / (a.dist / 100)) + '/100 m' : dep === 'carrera' ? fmtMin(a.mov / 60 / (a.dist / 1000)) + '/km' : dep === 'ciclismo' ? (a.dist / 1000 / (a.mov / 3600)).toFixed(1).replace('.', ',') + ' km/h' : '') : '';
+  return `<a class="act" style="--c:${DEP[dep]?.c}" href="https://www.strava.com/activities/${encodeURIComponent(a.sid)}" target="_blank" rel="noopener"><span class="src">Strava${a.hora ? ' · ' + esc(a.hora) : ''}</span><b>${esc(a.nombre || DEP[dep]?.n || 'Actividad')}</b>
+    <span class="nums">${[km, t, ritmo, a.fc && '♥ ' + Math.round(a.fc), a.desn && '↑ ' + Math.round(a.desn) + ' m'].filter(Boolean).map(x => `<span>${x}</span>`).join('')}</span></a>`;
 }
 // Lo que ha registrado cada persona en una sesión (vista del entrenador)
 function resultados(s) {
