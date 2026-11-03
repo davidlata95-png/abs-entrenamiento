@@ -1296,7 +1296,7 @@ function ultimaVez(it, s) {
 function enlazarSesionDep(m) {
   m.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.v) return abrirVideo(b.dataset.v, b.dataset.n, b.dataset.s, b.dataset.e);
+    if (b.dataset.v) { abrirVideo.h = !!b.dataset.h; return abrirVideo(b.dataset.v, b.dataset.n, b.dataset.s, b.dataset.e); }
     if (b.dataset.set) { const [sid, bi, ii, k] = b.dataset.set.split('|'); const r = reg(sid), kk = `${bi}|${ii}|${k}`; r.sets[kk] = { ...(r.sets[kk] || {}), ok: !r.sets[kk]?.ok }; guardarReg(r); const on = r.sets[kk].ok; const y = scrollY; renderDep(); scrollTo(0, y); if (on) { const s = byId('sesion', sid), it = s.bloques[+bi].items[+ii]; iniciarDescanso(it.desc, it.nombre); } return; }
     if (b.dataset.hecho) { const [sid, bi, ii] = b.dataset.hecho.split('|'); const r = reg(sid), kk = `${bi}|${ii}`; r.hecho[kk] = !r.hecho[kk]; guardarReg(r); const y = scrollY; renderDep(); scrollTo(0, y); return; }
     if (b.dataset.rpe) { const [sid, v] = b.dataset.rpe.split('|'); const r = reg(sid); r.rpe = +v; const mi = m.querySelector(`[data-min="${sid}"]`); r.minutos = +mi.value || ''; b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); $(`#rpeT-${sid}`).textContent = RPE_TXT[+v]; $(`#ua-${sid}`).textContent = ua(r) + ' UA'; return; }
@@ -1352,7 +1352,7 @@ async function duracionYT(v) {
 const vidId = u => (String(u || '').match(/(?:shorts\/|v=|youtu\.be\/|embed\/)([\w-]{11})/) || [])[1];
 // Tramo del vídeo: ?start=S&end=E en el enlace (para quedarse con 10 s de un vídeo más largo); la app lo repite en bucle
 const clip = u => { const a = String(u || '').match(/[?&]start=(\d+)/), b = String(u || '').match(/[?&]end=(\d+)/); return { s: a ? +a[1] : 0, e: b ? +b[1] : 0 }; };
-const tramo = u => { const c = clip(u); return `data-v="${vidId(u)}" data-s="${c.s}" data-e="${c.e}"`; };
+const tramo = u => { const c = clip(u); return `data-v="${vidId(u)}" data-s="${c.s}" data-e="${c.e}"${/shorts\//.test(u) ? '' : ' data-h="1"'}`; };
 let vidT = null;
 function dialogs() {
   return `<dialog id="vd" aria-label="Vídeo del ejercicio"><div class="vbox"><button type="button" class="vclose" aria-label="Cerrar vídeo">×</button><div class="vframe"><iframe title="Vídeo" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div><p></p></div></dialog>
@@ -1371,12 +1371,12 @@ function setupDialogs() {
   $('#pk').addEventListener('click', e => { if (e.target.id === 'pk') $('#pk').close(); });
   $('#rPlus').onclick = () => { if (R.fin || R.none) return; R.end += 15000; R.tot += 15; tick(); };
   $('#rSkip').onclick = ocultarDescanso;
-  document.addEventListener('click', e => { const t = e.target.closest('#edBody .thumb'); if (t) abrirVideo(t.dataset.v, t.dataset.n, t.dataset.s, t.dataset.e); });
+  document.addEventListener('click', e => { const t = e.target.closest('#edBody .thumb'); if (t) { abrirVideo.h = !!t.dataset.h; abrirVideo(t.dataset.v, t.dataset.n, t.dataset.s, t.dataset.e); } });
 }
 function abrirEd(titulo, html, ok, okTxt = 'Guardar') { $('#edT').textContent = titulo; $('#edBody').innerHTML = html; $('#edOk').textContent = okTxt; edOk = ok; const d = $('#ed'); if (!d.open) d.showModal(); $('#edBody').scrollTop = 0; }
 function cerrarEd() { const d = $('#ed'); if (d.open) d.close(); edOk = null; }
 function abrirVideo(v, n, s, e) {
-  const d = $('#vd'), f = d.querySelector('iframe'); d.querySelector('p').textContent = n || ''; s = +s || 0; e = +e || 0;
+  const d = $('#vd'), f = d.querySelector('iframe'); d.querySelector('p').textContent = n || ''; d.classList.toggle('h', !!abrirVideo.h); s = +s || 0; e = +e || 0;
   const base = `https://www.youtube-nocookie.com/embed/${v}?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&modestbranding=1`;
   const url = e > s ? `${base}&start=${s}&end=${e}` : `${base}&loop=1&playlist=${v}`;
   f.src = url; clearInterval(vidT); if (e > s) vidT = setInterval(() => { f.src = url; }, (e - s) * 1000 + 1500);

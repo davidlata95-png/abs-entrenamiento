@@ -287,3 +287,4 @@ table.data th.n{text-align:right}
 .calbar .btn{white-space:nowrap}
 @media (max-width:820px){.calbar>select{max-width:none!important;flex:1 1 100%}.calbar>.row{justify-content:flex-start!important}}
 .masmenu[hidden]{display:none}
+#vd.h .vbox{width:min(720px,92vw)}#vd.h .vframe{aspect-ratio:16/9}
