@@ -80,6 +80,8 @@ function doPost(e) {
 
 // GET ?atleta=Nombre → series y comentarios de ese nadador, para que la app los muestre
 function doGet(e) {
+  // Vuelta desde Strava tras autorizar la conexión
+  if (e.parameter && e.parameter.state && (e.parameter.code || e.parameter.error)) return stravaVuelta_(e.parameter);
   // ?app=1 → código actual de la app (pestaña "App"), para que se actualice sola
   if (e.parameter && e.parameter.app) {
     const shA = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('App');
@@ -279,6 +281,9 @@ function api_(q) {
       anotarSeries_(reg, dep, ses);
       return { ok: true };
     }
+    let filasA = filas;
+    if (stravaTok_(dep.id)) { try { if (stravaSync_(dep.id, 15)) filasA = leerDatos_(); } catch (e) {} }
+    const actividades = filasA.filter(r => r.tipo === 'actividad' && r.ref === dep.id).map(doc_).filter(Boolean);
     const sesiones = filas.filter(r => r.tipo === 'sesion' && refs[r.ref]).map(doc_).filter(Boolean);
     const registros = filas.filter(r => r.tipo === 'registro' && r.ref === dep.id).map(doc_).filter(Boolean);
     const usados = {};
@@ -286,7 +291,16 @@ function api_(q) {
     const ejercicios = filas.filter(r => r.tipo === 'ejercicio' && usados[r.id]).map(doc_).filter(Boolean);
     const grupos = docs_(filas, 'grupo').filter(g => (dep.grupos || []).indexOf(g.id) >= 0).map(g => ({ id: g.id, nombre: g.nombre }));
     const { pin, ...pub } = dep;
-    return { ok: true, dep: pub, sesiones, registros, ejercicios, grupos };
+    return { ok: true, dep: pub, sesiones, registros, ejercicios, grupos, actividades, strava: stravaEstadoDep_(dep.id) };
+  }
+  // El deportista conecta o desconecta su Strava, o pide traer lo último
+  if (a === 'strava') {
+    const dep = deportista_(q.id, q.pin, false);
+    if (!dep) return { ok: false, error: 'pin' };
+    if (q.op === 'url') return stravaCfg_().id ? { ok: true, url: stravaUrl_(dep.id) } : { ok: false, error: 'sin configurar' };
+    if (q.op === 'sync') { stravaSync_(dep.id, 0); return { ok: true, actividades: docs_(leerDatos_().filter(r => r.ref === dep.id), 'actividad'), strava: stravaEstadoDep_(dep.id) }; }
+    if (q.op === 'desconectar') { stravaDesconectar_(dep.id); return { ok: true }; }
+    return { ok: false, error: 'op' };
   }
   if (a === 'coach') {
     if (q.op === 'crearClave') {
@@ -307,8 +321,114 @@ function api_(q) {
     // Asistente IA: la clave de la API de Anthropic se guarda en las propiedades del script (no en la hoja)
     if (q.op === 'iaGuardarClave') { PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', String(q.key || '').trim()); return { ok: true }; }
     if (q.op === 'iaClave') { return { ok: true, key: PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') || '' }; }
+    // Strava: ID y secreto de la app de Strava del entrenador (en las propiedades del script, no en la hoja)
+    if (q.op === 'stravaConfig') { const p = PropertiesService.getScriptProperties(); p.setProperty('STRAVA_ID', String(q.id || '').trim()); if (q.secret) p.setProperty('STRAVA_SECRET', String(q.secret).trim()); return { ok: true, estado: stravaEstado_() }; }
+    if (q.op === 'stravaEstado') return { ok: true, estado: stravaEstado_() };
+    if (q.op === 'stravaUrl') return stravaCfg_().id ? { ok: true, url: stravaUrl_(String(q.dep)) } : { ok: false, error: 'sin configurar' };
+    if (q.op === 'stravaSync') { const n = stravaSyncTodos_(q.forzar ? 0 : 15); return { ok: true, nuevas: n, actividad: docs_(leerDatos_(), 'actividad'), estado: stravaEstado_() }; }
+    if (q.op === 'stravaDesconectar') { stravaDesconectar_(String(q.dep)); return { ok: true, estado: stravaEstado_() }; }
     if (q.op === 'cambiarClave') { hConfig_().getRange('B1').setValue(huella_(q.nueva)); return { ok: true }; }
     return { ok: false, error: 'op' };
   }
   return { ok: false, error: 'accion' };
 }
+
+
+// ===================== Strava (y Garmin a través de Strava) =====================
+// Cada deportista autoriza una vez su cuenta de Strava. Sus tokens se guardan en las propiedades del script
+// (nunca en la hoja). Las actividades se guardan resumidas en Datos con tipo "actividad" y se actualizan al entrar.
+const URL_API_ = 'https://script.google.com/macros/s/AKfycbyYBd73ePdCyP2pho3jQjm6-5SmCijbgQuyz_87Mxhm6cHz_6yyVoRCx8CIhB5xBrXqEw/exec';
+const URL_APP_ = 'https://davidlata95-png.github.io/abs-entrenamiento/';
+const props_ = () => PropertiesService.getScriptProperties();
+const stravaCfg_ = () => ({ id: props_().getProperty('STRAVA_ID') || '', secret: props_().getProperty('STRAVA_SECRET') || '' });
+function firma_(txt) {
+  const b = Utilities.computeHmacSha256Signature(String(txt), stravaCfg_().secret || 'abs');
+  return Utilities.base64EncodeWebSafe(b).replace(/=+$/, '').slice(0, 20);
+}
+function stravaUrl_(dep) {
+  const c = stravaCfg_();
+  return 'https://www.strava.com/oauth/authorize?client_id=' + encodeURIComponent(c.id) + '&response_type=code&approval_prompt=auto'
+    + '&scope=' + encodeURIComponent('read,activity:read_all') + '&redirect_uri=' + encodeURIComponent(URL_API_)
+    + '&state=' + encodeURIComponent(dep + '.' + firma_(dep));
+}
+function stravaTok_(dep) { try { return JSON.parse(props_().getProperty('STRAVA_TOK_' + dep) || 'null'); } catch (e) { return null; } }
+function stravaGuardarTok_(dep, t) { props_().setProperty('STRAVA_TOK_' + dep, JSON.stringify(t)); }
+function stravaPost_(payload) {
+  const c = stravaCfg_();
+  const r = UrlFetchApp.fetch('https://www.strava.com/oauth/token', { method: 'post', muteHttpExceptions: true, payload: Object.assign({ client_id: c.id, client_secret: c.secret }, payload) });
+  const j = JSON.parse(r.getContentText() || '{}');
+  if (r.getResponseCode() !== 200) throw new Error('Strava ' + r.getResponseCode() + ': ' + (j.message || ''));
+  return j;
+}
+function paginaVuelta_(ok, txt) {
+  const url = URL_APP_ + '?strava=' + (ok ? 'ok' : 'error');
+  return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width,initial-scale=1"><div style="font-family:system-ui,sans-serif;max-width:420px;margin:15vh auto;padding:24px;text-align:center">'
+    + '<div style="font-size:40px">' + (ok ? '✅' : '⚠️') + '</div><h2>' + txt + '</h2>'
+    + '<a href="' + url + '" target="_top" style="display:inline-block;margin-top:12px;background:#e8742a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:700">Volver a ABS Entrenamiento</a></div>')
+    .setTitle('ABS · Strava').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+function stravaVuelta_(p) {
+  const st = String(p.state || ''), i = st.lastIndexOf('.'), dep = st.slice(0, i);
+  if (!dep || st.slice(i + 1) !== firma_(dep)) return paginaVuelta_(false, 'Enlace no válido');
+  if (p.error) return paginaVuelta_(false, 'No se ha conectado Strava');
+  if (!/activity:read/.test(String(p.scope || ''))) return paginaVuelta_(false, 'Falta permitir «Ver datos de tus actividades»');
+  try {
+    const j = stravaPost_({ code: p.code, grant_type: 'authorization_code' });
+    stravaGuardarTok_(dep, { at: j.access_token, rt: j.refresh_token, exp: j.expires_at, aid: j.athlete && j.athlete.id, nom: j.athlete ? [j.athlete.firstname, j.athlete.lastname].filter(Boolean).join(' ') : '', ult: 0 });
+    const lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try { stravaSync_(dep, 0); } finally { lock.releaseLock(); }
+    return paginaVuelta_(true, 'Strava conectado');
+  } catch (e) { return paginaVuelta_(false, 'Error al conectar: ' + e.message); }
+}
+function stravaAcceso_(dep) {
+  const t = stravaTok_(dep);
+  if (!t) return null;
+  if (t.exp - 120 < Date.now() / 1000) {
+    const j = stravaPost_({ grant_type: 'refresh_token', refresh_token: t.rt });
+    t.at = j.access_token; t.rt = j.refresh_token; t.exp = j.expires_at; stravaGuardarTok_(dep, t);
+  }
+  return t;
+}
+// Trae las actividades nuevas (últimos 60 días la primera vez). minMin: no repetir si se sincronizó hace menos de X minutos.
+function stravaSync_(dep, minMin) {
+  let t = stravaTok_(dep);
+  if (!t || !stravaCfg_().id) return 0;
+  const ahora = Date.now() / 1000;
+  if (minMin && t.ult && ahora - t.ult < minMin * 60) return 0;
+  t = stravaAcceso_(dep);
+  const desde = Math.floor(t.ult ? t.ult - 3 * 86400 : ahora - 60 * 86400);
+  const docs = [];
+  for (let pag = 1; pag <= 5; pag++) {
+    const r = UrlFetchApp.fetch('https://www.strava.com/api/v3/athlete/activities?per_page=100&page=' + pag + '&after=' + desde, { headers: { Authorization: 'Bearer ' + t.at }, muteHttpExceptions: true });
+    if (r.getResponseCode() === 401) { stravaDesconectar_(dep, true); return 0; }
+    if (r.getResponseCode() !== 200) break;
+    const lista = JSON.parse(r.getContentText() || '[]');
+    lista.forEach(a => docs.push({ tipo: 'actividad', doc: {
+      id: 'st' + a.id, sid: String(a.id), dep: dep, fecha: String(a.start_date_local).slice(0, 10), hora: String(a.start_date_local).slice(11, 16),
+      tipo: a.sport_type || a.type, nombre: a.name, dist: Math.round(a.distance || 0), mov: a.moving_time || 0, tot: a.elapsed_time || 0,
+      desn: Math.round(a.total_elevation_gain || 0), fc: a.average_heartrate || 0, fcmax: a.max_heartrate || 0, w: a.average_watts || 0,
+      esfuerzo: a.suffer_score || 0, origen: a.device_name || '' } }));
+    if (lista.length < 100) break;
+  }
+  if (docs.length) guardarDocs_(docs);
+  t.ult = Math.floor(ahora); stravaGuardarTok_(dep, t);
+  return docs.length;
+}
+function stravaConectados_() { return props_().getKeys().filter(k => k.indexOf('STRAVA_TOK_') === 0).map(k => k.slice(11)); }
+function stravaSyncTodos_(minMin) { let n = 0; stravaConectados_().forEach(d => { try { n += stravaSync_(d, minMin); } catch (e) {} }); return n; }
+function stravaDesconectar_(dep, soloLocal) {
+  const t = stravaTok_(dep);
+  if (t && !soloLocal) { try { UrlFetchApp.fetch('https://www.strava.com/oauth/deauthorize', { method: 'post', muteHttpExceptions: true, payload: { access_token: t.at } }); } catch (e) {} }
+  props_().deleteProperty('STRAVA_TOK_' + dep);
+}
+function stravaEstadoDep_(dep) { const t = stravaTok_(dep); return { configurado: !!stravaCfg_().id, conectado: !!t, nombre: t ? t.nom : '', ult: t ? t.ult : 0 }; }
+function stravaEstado_() {
+  const c = {}; stravaConectados_().forEach(d => { const t = stravaTok_(d); c[d] = { nombre: t.nom, ult: t.ult }; });
+  return { configurado: !!stravaCfg_().id, conSecreto: !!stravaCfg_().secret, id: stravaCfg_().id, dominio: 'script.google.com', conectados: c };
+}
+// Opcional: ejecútala una vez desde el editor para traer las actividades de todos cada hora, aunque nadie abra la app.
+function instalarStravaCadaHora() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sincronizarStrava').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('sincronizarStrava').timeBased().everyHours(1).create();
+}
+function sincronizarStrava() { const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return; try { stravaSyncTodos_(30); } finally { lock.releaseLock(); } }

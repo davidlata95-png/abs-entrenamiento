@@ -295,3 +295,8 @@ table.sets td.kg{font-weight:700}
 .act{display:flex;flex-direction:column;gap:3px;text-decoration:none;border-radius:14px;padding:10px 12px;background:color-mix(in srgb,#fc4c02 7%,var(--card));border:1px solid color-mix(in srgb,#fc4c02 25%,var(--line))}
 .act .src{font-size:11px;font-weight:800;color:#fc4c02;text-transform:uppercase;letter-spacing:.05em}
 .act .nums{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--f-num);font-size:14px}
+.slogo{color:#fc4c02;display:inline-grid}
+.strava-b{background:#fc4c02;color:#fff;border-color:#fc4c02;display:inline-flex;align-items:center;gap:6px}
+.card.strava{border-color:color-mix(in srgb,#fc4c02 30%,var(--line))}
+.actm{display:flex;flex-direction:column;gap:1px;text-decoration:none;border-radius:10px;padding:6px 8px;background:color-mix(in srgb,#fc4c02 8%,var(--card));border-left:4px solid #fc4c02;font-size:12px}
+.actm span{color:#fc4c02;line-height:0}.actm b{font-size:12px}.actm small{font-size:11px;color:var(--muted);font-family:var(--f-num)}

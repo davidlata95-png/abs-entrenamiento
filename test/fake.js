@@ -30,17 +30,21 @@ function load() {
     console,
     SpreadsheetApp: { getActiveSpreadsheet: () => ss },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    UrlFetchApp: { fetch: (u, o) => { const r = (global.__strava || (() => ({ code: 404, body: '{}' })))(u, o || {}); return { getResponseCode: () => r.code, getContentText: () => r.body }; } },
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 1 }, createHtmlOutput: h => ({ html: h, setTitle() { return this; }, setXFrameOptionsMode() { return this; } }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ setMimeType() { return this; }, text: t }) },
-    PropertiesService: (() => { const P = {}; const sp = { getProperty: k => P[k] ?? null, setProperty: (k, v) => { P[k] = v; } }; return { getScriptProperties: () => sp }; })(),
+    PropertiesService: (() => { const P = {}; const sp = { getProperty: k => P[k] ?? null, setProperty: (k, v) => { P[k] = v; }, getKeys: () => Object.keys(P), deleteProperty: k => { delete P[k]; } }; return { getScriptProperties: () => sp }; })(),
     Utilities: {
       DigestAlgorithm: { SHA_256: 1 }, Charset: { UTF_8: 1 },
+      computeHmacSha256Signature: (s, k) => Array.from(crypto.createHmac('sha256', k).update(s).digest()),
+      base64EncodeWebSafe: b => Buffer.from(b.map(x => x & 255)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
       computeDigest: (_, s) => Array.from(crypto.createHash('sha256').update(s).digest()).map(b => b > 127 ? b - 256 : b),
     },
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(__dirname + '/../apps-script/Codigo.gs', 'utf8') + '\n;this.doPost=doPost;this.doGet=doGet;', ctx);
   const post = body => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).text);
-  const get = params => JSON.parse(ctx.doGet({ parameter: params }).text);
+  const get = params => { const o = ctx.doGet({ parameter: params }); return o.text ? JSON.parse(o.text) : o; };
   return { post, get, sheets };
 }
 module.exports = { load };

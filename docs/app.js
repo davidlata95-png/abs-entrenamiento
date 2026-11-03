@@ -42,6 +42,16 @@ const CAT_ANT_NAT = { 'Calentamiento': 'Warm up', 'Técnica': 'Ejercicios de té
 const CAT_ANT = { 'Movilidad': 'Warm up', 'Pliometría y lanzamientos': 'Saltos, pliometría y fuerza explosiva', 'Derivados olímpicos': 'Saltos, pliometría y fuerza explosiva', 'Empuje': 'Fuerza · Empuje', 'Tracción': 'Fuerza · Tracción', 'Dominante de rodilla': 'Fuerza · Dominante de rodilla', 'Dominante de cadera': 'Fuerza · Dominante de cadera', 'Core': 'Accesorios', 'Prevención de hombro': 'Accesorios' };
 const ordCat = (dep, c) => { const i = (CATS[dep] || []).indexOf(c); return i < 0 ? 99 : i; };
 const ordenEj = (a, b) => ordCat(a.deporte, a.cat) - ordCat(b.deporte, b.cat) || a.nombre.localeCompare(b.nombre, 'es');
+// La biblioteca es solo de vídeos: lo que no tiene vídeo de YouTube pasa a la base de datos como entrenamiento escrito
+function migrarBib() {
+  const sin = D.ejercicio.filter(e => !vidId(e.video));
+  if (!sin.length) return;
+  const refs = sin.filter(e => (e.texto || '').trim()).map(e => ({ tipo: 'referencia', doc: { id: 'bib-' + e.id, origen: 'Biblioteca', deporte: e.deporte, tipo: e.cat || '', titulo: e.nombre, texto: e.texto, medida: e.def?.dist ? e.def.dist + ' m' : '', autor: e.fuente || '', url: '' } }));
+  refs.forEach(x => { if (!byId('referencia', x.doc.id)) D.referencia.push(x.doc); });
+  if (refs.length) guardar(refs);
+  borrar(sin.map(e => ({ tipo: 'ejercicio', id: e.id })));
+}
+const escrito = r => !!((r.serie || '').trim() || ((r.texto || '').trim() && !igCode(r.url)));
 function migrarCats() {
   const cambios = D.ejercicio.filter(e => (e.deporte === 'fuerza' && CAT_ANT[e.cat]) || (e.deporte === 'natacion' && CAT_ANT_NAT[e.cat])).map(e => ({ tipo: 'ejercicio', doc: { ...e, cat: (e.deporte === 'natacion' ? CAT_ANT_NAT : CAT_ANT)[e.cat] } }));
   if (cambios.length) guardar(cambios);
@@ -238,6 +248,8 @@ function enlazarInstalar() {
 
 /* ---------- Arranque ---------- */
 async function iniciar() {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('strava')) { setTimeout(() => toast(qs.get('strava') === 'ok' ? 'Strava conectado: tus entrenos llegarán solos' : 'No se ha conectado Strava', 3500), 900); history.replaceState(null, '', location.pathname + (qs.get('g') ? '?g=' + encodeURIComponent(qs.get('g')) : '')); }
   if (S.auth?.modo === 'coach') return entrarCoach(S.auth.clave, true);
   if (S.auth?.modo === 'dep') return entrarDep(S.auth.id, S.auth.pin, true);
   pantallaAcceso();
@@ -335,7 +347,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); marcoCoach(); vaciarCola(); importarFastForce();
+    migrarCats(); migrarBib(); marcoCoach(); vaciarCola(); importarFastForce(); stravaSyncCoach();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -399,10 +411,11 @@ async function importarFastForce() {
 function vDeportistas(m) {
   const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const arch = D.deportista.filter(d => d.archivado);
-  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
+  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
     ${deps.length ? `<div class="list">${deps.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b><small>${esc([...(d.grupos || []).map(g => byId('grupo', g)?.nombre), d.grupo, (d.deportes || []).map(x => DEP[x]?.n).join(' · ')].filter(Boolean).join(' · '))}</small></div><span class="chip mono">${d.pin ? 'PIN ' + esc(d.pin) : 'Sin PIN'}</span></button>`).join('')}</div>` : '<div class="empty">Aún no hay deportistas. Crea el primero para asignarle sesiones o un plan.</div>'}
     ${arch.length ? `<details><summary class="muted small">Archivados (${arch.length})</summary><div class="list" style="margin-top:8px">${arch.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b></div></button>`).join('')}</div></details>` : ''}`;
   $('#nd').onclick = () => editDeportista();
+  $('#cfS').onclick = () => configStrava();
   m.querySelectorAll('[data-d]').forEach(b => b.onclick = () => editDeportista(byId('deportista', b.dataset.d)));
 }
 // Ritmo R3 (umbral) para pasar distancias a tiempo y calcular ECOs
@@ -421,6 +434,7 @@ function editDeportista(d) {
       ${d.grupo ? `<p class="small muted">Grupo anotado antes: ${esc(d.grupo)}</p>` : ''}
       <div class="l">Deportes<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-dp="${k}" aria-pressed="${(d.deportes || []).includes(k)}"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
       ${ritmosEd(d)}
+      ${nuevo ? '' : `<div class="l">Strava<div class="row">${S.stravaE?.conectados?.[d.id] ? `<span class="chip"><i style="--c:#fc4c02"></i>Conectado${S.stravaE.conectados[d.id].nombre ? ' · ' + esc(S.stravaE.conectados[d.id].nombre) : ''}</span><button type="button" class="btn sm ghost danger" id="stOff">Desconectar</button>` : `<span class="small muted grow">Sin conectar.</span><button type="button" class="btn sm" id="stL">Copiar enlace para conectar</button>`}</div></div>`}
       <label class="l">Notas<textarea class="f" id="dno">${esc(d.notas || '')}</textarea></label>
     </div>
     ${nuevo ? '' : `<div class="row"><button class="btn danger" id="arc">${d.archivado ? 'Recuperar' : 'Archivar'}</button><button class="btn danger" id="del">Borrar deportista y sus sesiones</button></div>`}`,
@@ -430,6 +444,13 @@ function editDeportista(d) {
       if (d.pin && !/^\d{4}$/.test(d.pin)) return toast('El PIN debe tener 4 cifras'), false;
       guardar([{ tipo: 'deportista', doc: d }]); renderCoach();
     });
+  const stL = $('#stL'); if (stL) stL.onclick = async () => {
+    if (!S.stravaE?.configurado) return toast('Primero activa Strava en Deportistas → Strava');
+    const j = await api({ a: 'coach', op: 'stravaUrl', clave: S.auth.clave, dep: d.id }).catch(() => ({}));
+    if (!j.ok) return toast('No se ha podido crear el enlace');
+    try { await navigator.clipboard.writeText(j.url); toast('Enlace copiado: mándaselo a ' + d.nombre.split(' ')[0]); } catch (e) { prompt('Copia este enlace', j.url); }
+  };
+  const stOff = $('#stOff'); if (stOff) stOff.onclick = async () => { if (!confirm('¿Desconectar el Strava de ' + d.nombre + '?')) return; const j = await api({ a: 'coach', op: 'stravaDesconectar', clave: S.auth.clave, dep: d.id }).catch(() => ({})); if (j.ok) { S.stravaE = j.estado; toast('Desconectado'); cerrarEd(); renderCoach(); } };
   document.querySelectorAll('[data-dgr]').forEach(b => b.onclick = () => { const k = b.dataset.dgr; const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); d.grupos = on ? [...new Set([...d.grupos, k])] : d.grupos.filter(x => x !== k); });
   document.querySelectorAll('[data-dp]').forEach(b => b.onclick = () => { const k = b.dataset.dp; const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); d.deportes = on ? [...new Set([...(d.deportes || []), k])] : d.deportes.filter(x => x !== k); });
   if (!nuevo) {
@@ -534,7 +555,7 @@ function vCalendario(m) {
     <div class="week">${[0, 1, 2, 3, 4, 5, 6].map(i => {
       const d = addDays(lun, i), k = key(d), lista = ses.filter(s => s.fecha === k);
       return `<div class="wday ${k === key(today()) ? 'today' : ''}"><div class="dh"><span>${DIAS[i]}</span><b>${d.getDate()}</b></div>
-        ${lista.map(s => scard(s)).join('')}<button class="add" data-add="${k}">+ Sesión</button></div>`;
+        ${lista.map(s => scard(s)).join('')}${Q.dep ? actividadesDe(Q.dep.id, k).map(actMini).join('') : ''}<button class="add" data-add="${k}">+ Sesión</button></div>`;
     }).join('')}</div>`;
   $('#cd').onchange = e => { S.ui.dep = e.target.value; renderCoach(); };
   $('#pw').onclick = () => { S.ui.semana = key(addDays(lun, -7)); renderCoach(); };
@@ -787,6 +808,7 @@ function verSesion(s, quienId) {
 // Actividades que han llegado de Strava (o Garmin a través de Strava) para un deportista y un día
 const actividadesDe = (dep, fecha) => (D.actividad || []).filter(a => a.dep === dep && a.fecha === fecha).sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
 const DEP_STRAVA = { Swim: 'natacion', Run: 'carrera', TrailRun: 'carrera', VirtualRun: 'carrera', Ride: 'ciclismo', VirtualRide: 'ciclismo', GravelRide: 'ciclismo', MountainBikeRide: 'ciclismo', WeightTraining: 'fuerza', Workout: 'otro', Walk: 'otro', Hike: 'otro' };
+const actMini = a => { const dep = DEP_STRAVA[a.tipo] || 'otro'; return `<a class="actm" style="--c:${DEP[dep]?.c}" href="https://www.strava.com/activities/${encodeURIComponent(a.sid)}" target="_blank" rel="noopener"><span>${STRAVA_LOGO}</span><b>${esc(a.nombre || DEP[dep]?.n)}</b><small>${[a.dist && fmtDist(a.dist), a.mov && fmtMin(a.mov / 60)].filter(Boolean).join(' · ')}</small></a>`; };
 function actCard(a) {
   const dep = DEP_STRAVA[a.tipo] || 'otro', km = a.dist ? fmtDist(a.dist) : '', t = a.mov ? fmtMin(a.mov / 60) : '';
   const ritmo = a.dist && a.mov ? (dep === 'natacion' ? fmtMin(a.mov / 60 / (a.dist / 100)) + '/100 m' : dep === 'carrera' ? fmtMin(a.mov / 60 / (a.dist / 1000)) + '/km' : dep === 'ciclismo' ? (a.dist / 1000 / (a.mov / 3600)).toFixed(1).replace('.', ',') + ' km/h' : '') : '';
@@ -900,9 +922,9 @@ function vPlan(m) {
 /* ---------- Biblioteca ---------- */
 function vBiblioteca(m) {
   const f = S.ui.bib = S.ui.bib || { dep: 'fuerza', cat: '', q: '' };
-  const lista = D.ejercicio.filter(e => e.deporte === f.dep && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre + ' ' + (e.texto || '')).includes(norm(f.q)))).sort(ordenEj);
+  const lista = D.ejercicio.filter(e => vidId(e.video) && e.deporte === f.dep && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre + ' ' + (e.texto || '')).includes(norm(f.q)))).sort(ordenEj);
   const grupos = []; lista.forEach(e => { const g = grupos[grupos.length - 1]; if (g && g.cat === (e.cat || '')) g.l.push(e); else grupos.push({ cat: e.cat || '', l: [e] }); });
-  const n = k => D.ejercicio.filter(e => e.deporte === k).length;
+  const n = k => D.ejercicio.filter(e => e.deporte === k && vidId(e.video)).length;
   const vacia = !D.ejercicio.length && !D.plan.length;
   m.innerHTML = `<div class="row"><h2 class="grow">Biblioteca</h2><button class="btn pri" id="ne">+ Nuevo</button></div>
     ${vacia ? '<div class="card row"><div class="grow"><b>Biblioteca vacía</b><div class="small muted">Puedes empezar con los ejercicios de fuerza del mesociclo High Force (con vídeo), calentamientos de natación de @swimcoachjj y los dos planes High Force de 4 semanas.</div></div><button class="btn pri" id="ini">Cargar biblioteca inicial</button></div>' : ''}
@@ -931,7 +953,7 @@ function editEjercicio(e, nuevo) {
     <div class="l">Valores por defecto al añadirlo a una sesión<div class="grid2">${(CAMPOS[e.deporte] || CAMPOS.otro).map(([k, n]) => `<label class="l">${n}<input class="f" data-df="${k}" value="${esc(e.def[k] || '')}"></label>`).join('')}</div></div></div>
     ${nuevo ? '' : '<button class="btn danger" id="dele">Borrar de la biblioteca</button>'}`;
   const leer = () => { e.nombre = $('#en').value.trim(); e.deporte = $('#ed2').value; e.cat = $('#ec').value.trim(); e.video = $('#ev').value.trim(); e.texto = $('#et').value; e.fuente = $('#ef').value.trim(); document.querySelectorAll('[data-df]').forEach(i => { if (i.value) e.def[i.dataset.df] = i.value; else delete e.def[i.dataset.df]; }); };
-  abrirEd(nuevo ? 'Nuevo ejercicio' : e.nombre, pinta(), () => { leer(); if (!e.nombre) return toast('Falta el nombre'), false; if (e.video && !vidId(e.video)) return toast('El vídeo tiene que ser un enlace de YouTube'), false; if (e.dur > 10) return toast(`El vídeo dura ${e.dur} s: elige uno de 10 s o menos`), false; guardar([{ tipo: 'ejercicio', doc: e }]); renderCoach(); });
+  abrirEd(nuevo ? 'Nuevo ejercicio' : e.nombre, pinta(), () => { leer(); if (!e.nombre) return toast('Falta el nombre'), false; if (e.video && !vidId(e.video)) return toast('El vídeo tiene que ser un enlace de YouTube'), false; if (e.dur > 10) return toast(`El vídeo dura ${e.dur} s: elige uno de 10 s o menos`), false; if (!vidId(e.video)) return toast('Falta el vídeo de YouTube: la biblioteca es solo de vídeos. Los entrenamientos escritos van en Base de datos.', 4000), false; guardar([{ tipo: 'ejercicio', doc: e }]); renderCoach(); });
   const enl = () => {
     $('#ed2').onchange = () => { leer(); $('#edBody').innerHTML = pinta(); enl(); };
     $('#ev').onchange = async () => { leer(); delete e.dur; $('#edBody').innerHTML = pinta(); enl(); const v = vidId(e.video); if (!v) return; const c = clip(e.video); if (c.e > c.s) { e.dur = c.e - c.s; $('#evDur').textContent = `Tramo de ${e.dur} s ${e.dur <= 10 ? '✓' : '· ⚠ supera los 10 s'}`; return; } $('#evDur').textContent = 'Comprobando la duración…'; const d = await duracionYT(v); if (vidId(e.video) !== v) return; if (d) e.dur = d; $('#evDur').textContent = d ? `Duración: ${d} s ${d <= 10 ? '✓' : '· ⚠ supera los 10 s: elige otro vídeo'}` : 'No se pudo comprobar la duración.'; };
@@ -951,14 +973,14 @@ const TIPOS_REF = {
 };
 function vBaseDatos(m) {
   const f = S.ui.bd = S.ui.bd || { dep: 'natacion', tipo: '', origen: '', q: '' };
-  const todos = D.referencia;
+  const todos = D.referencia.filter(escrito);
   const lista = todos.filter(r => r.deporte === f.dep && (!f.tipo || r.tipo === f.tipo) && (!f.origen || r.origen === f.origen) && (!f.q || norm([r.titulo, r.serie, r.texto, r.autor].join(' ')).includes(norm(f.q))))
     .sort((a, b) => (TIPOS_REF[a.deporte] || []).indexOf(a.tipo) - (TIPOS_REF[b.deporte] || []).indexOf(b.tipo) || (!a.serie && !!igCode(a.url)) - (!b.serie && !!igCode(b.url)) || String(a.titulo).localeCompare(String(b.titulo), 'es'));
   const n = k => todos.filter(r => r.deporte === k).length;
   const origenes = [...new Set(todos.map(r => r.origen).filter(Boolean))].sort();
   const grupos = []; lista.forEach(r => { const g = grupos[grupos.length - 1]; if (g && g.tipo === r.tipo) g.l.push(r); else grupos.push({ tipo: r.tipo, l: [r] }); });
   m.innerHTML = `<div class="row"><h2 class="grow">Base de datos de entrenamientos</h2><label class="btn" style="cursor:pointer">Importar archivo<input type="file" id="rimp" accept=".json,application/json" hidden></label><button class="btn" id="nr">+ Añadir</button></div>
-    <p class="muted small" style="margin-top:0">Entrenamientos de referencia de Train2Go e Instagram, ordenados por el contenido que trabajan. El asistente de IA los usa como ejemplos.</p>
+    <p class="muted small" style="margin-top:0">Solo entrenamientos escritos (de Train2Go, Instagram y los tuyos), ordenados por el contenido que trabajan. El asistente de IA los usa como ejemplos.</p>
     ${todos.length ? '' : '<div class="empty">La base de datos está vacía.</div>'}
     <div class="chips">${Object.entries(DEP).filter(([k]) => n(k)).map(([k, v]) => `<button class="chip" data-rd="${k}" aria-pressed="${f.dep === k}"><i style="--c:${v.c}"></i>${v.n} · ${n(k)}</button>`).join('')}</div>
     <div class="row"><input class="f grow" id="rq" placeholder="Buscar (p. ej. 8x50, aletas, umbral)" value="${esc(f.q)}" style="max-width:320px">
@@ -1007,6 +1029,7 @@ function editRef(r, nuevo) {
     () => {
       Object.assign(r, { titulo: $('#rft').value.trim(), deporte: $('#rfd').value, tipo: $('#rfc').value.trim(), serie: $('#rfs').value.trim(), texto: $('#rfx').value, origen: $('#rfo').value.trim(), url: $('#rfu').value.trim() });
       if (!r.titulo) return toast('Falta el título'), false;
+      if (!escrito(r)) return toast('Escribe el entrenamiento: la base de datos es solo de entrenamientos escritos'), false;
       guardar([{ tipo: 'referencia', doc: r }]); renderCoach();
     });
   if (!nuevo) $('#rfdel').onclick = () => { if (confirm('¿Borrar este entrenamiento de la base de datos?')) { borrar([{ tipo: 'referencia', id: r.id }]); cerrarEd(); renderCoach(); } };
@@ -1198,13 +1221,14 @@ function vCargaDep(m, dep, propio) {
   const dias = Array.from({ length: 28 }, (_, i) => { const d = addDays(lun, -21 + i); return { d, t: porDia[key(d)] || 0 }; });
   const regs = D.registro.filter(r => (r.dep || S.yo?.id) === dep.id && ua(r)).map(r => ({ r, s: byId('sesion', r.ses || r.id) })).sort((a, b) => (b.r.fecha || '').localeCompare(a.r.fecha || '')).slice(0, 40);
   const act = sem[7].t, ant = sem[6].t, media4 = Math.round((sem[3].t + sem[4].t + sem[5].t + sem[6].t) / 4);
-  m.innerHTML = `${propio ? '<h2>Mi carga</h2>' : `<div class="row"><button class="btn sm ghost" id="vc">← Todos</button><h2 class="grow">${esc(dep.nombre)}</h2></div>`}
+  m.innerHTML = `${propio ? `<h2>Mi carga</h2>${S.strava?.conectado ? `<div class="row small muted"><span class="slogo">${STRAVA_LOGO}</span><span class="grow">Strava conectado${S.strava.nombre ? ' · ' + esc(S.strava.nombre) : ''}</span><button class="btn sm ghost" id="stA">Actualizar</button><button class="btn sm ghost danger" id="stD">Desconectar</button></div>` : stravaBoxDep()}` : `<div class="row"><button class="btn sm ghost" id="vc">← Todos</button><h2 class="grow">${esc(dep.nombre)}</h2></div>`}
     <div class="kpis"><div class="kpi"><small>Esta semana</small><b>${act}</b> <span class="small muted">UA</span></div><div class="kpi"><small>Semana pasada</small><b>${ant}</b> <span class="small muted">UA</span></div><div class="kpi"><small>Media 4 semanas anteriores</small><b>${media4}</b> <span class="small muted">UA</span></div></div>
     <div class="card"><h3>Carga semanal (últimas 8 semanas)</h3><div class="chart" id="chW"></div></div>
     <div class="card"><h3>Carga diaria (últimas 4 semanas)</h3><div class="chart" id="chD"></div></div>
     <div class="card scroll"><h3>Sesiones registradas</h3><table class="data"><thead><tr><th>Fecha</th><th>Sesión</th><th class="n">Min</th><th class="n">RPE</th><th class="n">UA</th></tr></thead><tbody>
     ${regs.length ? regs.map(({ r, s }) => `<tr><td>${r.fecha ? fmtD(parseKey(r.fecha)) : ''}</td><td>${esc(s?.titulo || DEP[s?.deporte]?.n || '')}</td><td class="n">${r.minutos}</td><td class="n">${r.rpe}</td><td class="n">${ua(r)}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Sin registros todavía.</td></tr>'}</tbody></table></div>`;
   const vc = $('#vc'); if (vc) vc.onclick = () => { S.ui.cargaDep = null; renderCoach(); };
+  if (propio) enlazarStravaDep();
   barras($('#chW'), sem.map(x => ({ etq: fmtD(x.l), v: x.t, tip: `Semana del ${fmtD(x.l)}: ${x.t} UA` })));
   barras($('#chD'), dias.map(x => ({ etq: x.d.getDay() === 1 ? fmtD(x.d) : '', v: x.t, tip: `${fmtLong(x.d)}: ${x.t} UA`, hoy: key(x.d) === key(today()) })));
 }
@@ -1249,6 +1273,65 @@ async function entrarDep(id, pin, silencioso) {
 }
 function aplicarDep(j) {
   S.yo = j.dep; D.deportista = [j.dep]; D.grupo = j.grupos || []; D.sesion = j.sesiones; D.registro = j.registros; D.ejercicio = j.ejercicios;
+  D.actividad = j.actividades || []; S.strava = j.strava || {};
+}
+/* ---------- Strava ---------- */
+const STRAVA_LOGO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M15.4 17.9l-2.1-4.1h-3.1l5.2 10.2 5.1-10.2h-3.1zM10.2 0L3.3 13.8h4.1l2.8-5.5 2.8 5.5h4.1z"/></svg>';
+async function stravaConectar() {
+  try { const j = await api({ a: 'strava', op: 'url', id: S.auth.id, pin: S.auth.pin }); if (!j.ok) return toast('El entrenador aún no ha activado Strava'); location.href = j.url; }
+  catch (e) { toast('Sin conexión'); }
+}
+async function stravaActualizar(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Actualizando…'; }
+  try { const j = await api({ a: 'strava', op: 'sync', id: S.auth.id, pin: S.auth.pin }); if (j.ok) { D.actividad = j.actividades; S.strava = j.strava; const c = LS.get('abs2-cache', null); if (c?.r) { c.r.actividades = j.actividades; c.r.strava = j.strava; LS.set('abs2-cache', c); } toast('Strava al día'); } }
+  catch (e) { toast('Sin conexión'); }
+  renderDep();
+}
+function stravaBoxDep() {
+  const st = S.strava || {};
+  if (!st.configurado) return '';
+  if (!st.conectado) return `<div class="card strava"><div class="row"><span class="slogo">${STRAVA_LOGO}</span><div class="grow"><b>Conecta tu Strava</b><div class="small muted">Tus entrenos (también los de Garmin si lo tienes enlazado con Strava) aparecerán solos en tu plan y los verá tu entrenador.</div></div><button class="btn sm strava-b" id="stC">Conectar</button></div></div>`;
+  return `<div class="row small muted"><span class="slogo">${STRAVA_LOGO}</span><span class="grow">Strava conectado${st.nombre ? ' · ' + esc(st.nombre) : ''}</span><button class="btn sm ghost" id="stA">Actualizar</button></div>`;
+}
+function enlazarStravaDep() {
+  const c = $('#stC'); if (c) c.onclick = stravaConectar;
+  const a = $('#stA'); if (a) a.onclick = () => stravaActualizar(a);
+  const d = $('#stD'); if (d) d.onclick = async () => { if (!confirm('¿Desconectar Strava? Dejarán de llegar tus entrenos.')) return; await api({ a: 'strava', op: 'desconectar', id: S.auth.id, pin: S.auth.pin }); S.strava.conectado = false; renderDep(); };
+}
+// Entrenador: trae lo nuevo de Strava de todos los conectados (sin bloquear la pantalla)
+async function stravaSyncCoach(forzar) {
+  try {
+    const j = await api({ a: 'coach', op: 'stravaSync', clave: S.auth.clave, forzar: forzar ? 1 : 0 });
+    if (!j.ok) return; D.actividad = j.actividad || []; S.stravaE = j.estado;
+    LS.set('abs2-cache', { modo: 'coach', datos: D });
+    if (['cal', 'dep'].includes(S.tab) && !$('#ed')?.open) renderCoach();
+    if (forzar) toast(j.nuevas ? `${j.nuevas} actividades nuevas de Strava` : 'Strava al día');
+  } catch (e) {}
+}
+function configStrava() {
+  const e = S.stravaE || {};
+  const con = Object.entries(e.conectados || {});
+  abrirEd('Strava', `<div class="card list">
+    <p class="small" style="margin:0">Así llegan los entrenos de Strava (y de Garmin, si cada deportista enlaza Garmin con Strava) al plan de cada uno.</p>
+    <ol class="small" style="margin:0;padding-left:18px;line-height:1.6">
+      <li>Entra en <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener">strava.com/settings/api</a> con tu cuenta y crea una aplicación (pide tener Strava de pago).</li>
+      <li>Nombre: <b>ABS Entrenamiento</b> · Categoría: <b>Training</b> · Sitio web: <span class="mono">${esc(location.origin + location.pathname)}</span></li>
+      <li>Dominio de devolución de llamada de autorización: <b class="mono">script.google.com</b></li>
+      <li>Copia aquí el <b>ID de cliente</b> y el <b>secreto de cliente</b>.</li>
+      <li>Al principio solo te deja conectar tu cuenta: en la misma página puedes subir a 10 deportistas. Para más, hay que pedir revisión a Strava.</li>
+    </ol>
+    <div class="grid2"><label class="l">ID de cliente<input class="f mono" id="sId" value="${esc(e.id || '')}" inputmode="numeric"></label>
+    <label class="l">Secreto de cliente<input class="f mono" id="sSe" type="password" placeholder="${e.conSecreto ? 'Guardado · escribe para cambiarlo' : ''}"></label></div>
+    <small class="muted">Se guardan en el Apps Script, no en la hoja.</small></div>
+    <div class="card list"><h3>Conectados (${con.length})</h3>${con.length ? con.map(([id, x]) => `<div class="row"><b class="grow">${esc(byId('deportista', id)?.nombre || id)}</b><small class="muted">${esc(x.nombre || '')}${x.ult ? ' · ' + new Date(x.ult * 1000).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</small></div>`).join('') : '<small class="muted">Nadie todavía. Cada deportista pulsa «Conectar Strava» en su app, o le mandas su enlace desde su ficha.</small>'}
+    ${con.length ? '<button class="btn sm" id="sSy">Traer actividades ahora</button>' : ''}</div>`,
+    () => {
+      const id = $('#sId').value.trim(), secret = $('#sSe').value.trim();
+      if (!id) return toast('Falta el ID de cliente'), false;
+      if (!secret && !e.conSecreto) return toast('Falta el secreto de cliente'), false;
+      api({ a: 'coach', op: 'stravaConfig', clave: S.auth.clave, id, secret }).then(j => { if (j.ok) { S.stravaE = j.estado; toast('Strava activado'); } else toast('No se ha podido guardar'); }).catch(() => toast('Sin conexión'));
+    });
+  const sy = $('#sSy'); if (sy) sy.onclick = () => { cerrarEd(); stravaSyncCoach(true); };
 }
 const TABS_D = [['hoy', 'Hoy'], ['semana', 'Programa'], ['micarga', 'Mi carga']];
 function marcoDep() {
@@ -1273,7 +1356,7 @@ function renderDep() {
 function vSemanaDep(m) {
   const lun = monday(parseKey(S.ui.dia));
   m.innerHTML = `<div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(addDays(lun, 6))}</b><span>Toca una sesión para abrirla</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
-    <div class="list">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = addDays(lun, i), k = key(d), ss = D.sesion.filter(s => s.fecha === k); return `<div class="card"><div class="row"><b class="grow">${DIAS[i]} ${d.getDate()}</b></div>${ss.length ? ss.map(s => `<div style="margin-top:6px">${scard(s)}</div>`).join('') : '<small class="muted">Descanso</small>'}</div>`; }).join('')}</div>`;
+    <div class="list">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = addDays(lun, i), k = key(d), ss = D.sesion.filter(s => s.fecha === k); return `<div class="card"><div class="row"><b class="grow">${DIAS[i]} ${d.getDate()}</b></div>${ss.length ? ss.map(s => `<div style="margin-top:6px">${scard(s)}</div>`).join('') : actividadesDe(S.yo.id, k).length ? '' : '<small class="muted">Descanso</small>'}${actividadesDe(S.yo.id, k).map(a => `<div style="margin-top:6px">${actMini(a)}</div>`).join('')}</div>`; }).join('')}</div>`;
   $('#pw').onclick = () => { S.ui.dia = key(addDays(lun, -7)); renderDep(); };
   $('#nw').onclick = () => { S.ui.dia = key(addDays(lun, 7)); renderDep(); };
   m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.ui.dia = byId('sesion', b.dataset.s).fecha; S.tab = 'hoy'; marcoDep(); });
@@ -1283,10 +1366,12 @@ function vDia(m) {
   const ss = D.sesion.filter(s => s.fecha === S.ui.dia);
   m.innerHTML = bannerInstalar() + `<div class="days">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = addDays(lun, i), k = key(d), l = D.sesion.filter(s => s.fecha === k); return `<button data-dia="${k}" aria-pressed="${k === S.ui.dia}" aria-label="${fmtLong(d)}">${DIAS[i]}<b>${d.getDate()}</b><span class="dots">${l.map(s => `<i style="--c:${DEP[s.deporte]?.c}"></i>`).join('')}</span></button>`; }).join('')}</div>
     <div class="datenav"><button id="pw" aria-label="Semana anterior">‹</button><b>${fmtLong(dia)}</b>${S.ui.dia !== key(today()) ? '<button class="hoyb" id="hoy">Hoy</button>' : '<span class="hoyb on" id="hoy">Hoy</span>'}<button id="nw" aria-label="Semana siguiente">›</button></div>
+    ${stravaBoxDep()}
+    ${actividadesDe(S.yo.id, S.ui.dia).length ? `<section class="list"><div class="bh"><i style="--c:#fc4c02"></i>Hecho · Strava</div>${actividadesDe(S.yo.id, S.ui.dia).map(actCard).join('')}</section>` : ''}
     ${ss.length ? ss.map(s => sesionDep(s)).join('') : `<div class="empty">${fmtLong(dia)}<br>No tienes sesión programada.</div>`}
     <p class="sync" id="sync">${esc(S.ui.sync || '')}</p>`;
   m.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { S.ui.dia = b.dataset.dia; renderDep(); });
-  enlazarInstalar();
+  enlazarInstalar(); enlazarStravaDep();
   $('#pw').onclick = () => { S.ui.dia = key(addDays(lun, -7)); renderDep(); };
   $('#nw').onclick = () => { S.ui.dia = key(addDays(lun, 7)); renderDep(); };
   $('#hoy').onclick = () => { S.ui.dia = key(today()); renderDep(); };
