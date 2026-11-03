@@ -41,7 +41,21 @@ const CATS = {
 const CAT_ANT_NAT = { 'Calentamiento': 'Warm up', 'Técnica': 'Ejercicios de técnica', 'Velocidad': 'Potencia', 'Vuelta a la calma': 'Cool down' };
 const CAT_ANT = { 'Movilidad': 'Warm up', 'Pliometría y lanzamientos': 'Saltos, pliometría y fuerza explosiva', 'Derivados olímpicos': 'Saltos, pliometría y fuerza explosiva', 'Empuje': 'Fuerza · Empuje', 'Tracción': 'Fuerza · Tracción', 'Dominante de rodilla': 'Fuerza · Dominante de rodilla', 'Dominante de cadera': 'Fuerza · Dominante de cadera', 'Core': 'Accesorios', 'Prevención de hombro': 'Accesorios' };
 const ordCat = (dep, c) => { const i = (CATS[dep] || []).indexOf(c); return i < 0 ? 99 : i; };
-const ordenEj = (a, b) => ordCat(a.deporte, a.cat) - ordCat(b.deporte, b.cat) || a.nombre.localeCompare(b.nombre, 'es');
+// Natación: cada ejercicio va a un estilo (o submarino, salidas, virajes) y se ordena por dificultad (orden manual del entrenador)
+const ESTILOS = ['Crol', 'Espalda', 'Braza', 'Mariposa', 'Submarino', 'Salidas', 'Virajes'];
+const NIVELES = ['Iniciación', 'Básico', 'Intermedio', 'Avanzado'];
+const ordDif = (a, b) => (a.orden ?? 1e6) - (b.orden ?? 1e6) || (NIVELES.indexOf(a.nivel) + 1 || 9) - (NIVELES.indexOf(b.nivel) + 1 || 9) || String(a.id).localeCompare(String(b.id));
+const ordenEj = (a, b) => ordCat(a.deporte, a.cat) - ordCat(b.deporte, b.cat) || (a.deporte === 'natacion' ? (ESTILOS.indexOf(a.estilo) + 1 || 99) - (ESTILOS.indexOf(b.estilo) + 1 || 99) || ordDif(a, b) : 0) || a.nombre.localeCompare(b.nombre, 'es');
+// Pone estilo a los ejercicios de natación que no lo tienen, por su nombre (y los de la hoja «Tec Crol» → Crol)
+function migrarEstilos() {
+  const reglas = [[/viraxe|viraje|volteo/i, 'Virajes'], [/salida/i, 'Salidas'], [/submarin|\buw\b|ondulaci|delf[ií]n/i, 'Submarino'], [/espalda/i, 'Espalda'], [/braza/i, 'Braza'], [/mariposa/i, 'Mariposa'], [/\bcrol\b/i, 'Crol']];
+  const cambios = D.ejercicio.filter(e => e.deporte === 'natacion' && !e.estilo && vidId(e.video)).map(e => {
+    const t = e.nombre + ' ' + (e.texto || ''), r = reglas.find(([re]) => re.test(t));
+    const est = r ? r[1] : /tec crol/i.test(e.fuente || '') ? 'Crol' : '';
+    return est ? { tipo: 'ejercicio', doc: { ...e, estilo: est } } : null;
+  }).filter(Boolean);
+  if (cambios.length) guardar(cambios);
+}
 // La biblioteca es solo de vídeos: lo que no tiene vídeo de YouTube pasa a la base de datos como entrenamiento escrito
 function migrarBib() {
   const sin = D.ejercicio.filter(e => !vidId(e.video));
@@ -347,7 +361,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); migrarBib(); marcoCoach(); vaciarCola(); importarFastForce(); stravaSyncCoach();
+    migrarCats(); migrarBib(); migrarEstilos(); marcoCoach(); vaciarCola(); importarFastForce(); stravaSyncCoach();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -922,21 +936,34 @@ function vPlan(m) {
 
 /* ---------- Biblioteca ---------- */
 function vBiblioteca(m) {
-  const f = S.ui.bib = S.ui.bib || { dep: 'fuerza', cat: '', q: '' };
-  const lista = D.ejercicio.filter(e => vidId(e.video) && e.deporte === f.dep && (!f.cat || e.cat === f.cat) && (!f.q || norm(e.nombre + ' ' + (e.texto || '')).includes(norm(f.q)))).sort(ordenEj);
+  const f = S.ui.bib = S.ui.bib || { dep: 'fuerza', cat: '', q: '', est: '' };
+  const nat = f.dep === 'natacion', est = nat ? f.est || '' : '';
+  const lista = D.ejercicio.filter(e => vidId(e.video) && e.deporte === f.dep && (!f.cat || e.cat === f.cat) && (!est || (est === '-' ? !e.estilo : e.estilo === est)) && (!f.q || norm(e.nombre + ' ' + (e.texto || '')).includes(norm(f.q)))).sort(est ? ordDif : ordenEj);
   const grupos = []; lista.forEach(e => { const g = grupos[grupos.length - 1]; if (g && g.cat === (e.cat || '')) g.l.push(e); else grupos.push({ cat: e.cat || '', l: [e] }); });
+  const nEst = k => D.ejercicio.filter(e => e.deporte === 'natacion' && vidId(e.video) && (k === '-' ? !e.estilo : e.estilo === k)).length;
+  const tarjeta = (e, i) => `<div class="item ejrow">${est ? `<span class="pos mono">${i + 1}</span>` : ''}<button class="t lnkb" data-e="${e.id}">${vidId(e.video) ? `<img src="https://i.ytimg.com/vi/${vidId(e.video)}/default.jpg" alt="" width="48" height="36" style="border-radius:6px;object-fit:cover;flex:none" loading="lazy">` : ''}<span><b>${esc(e.nombre)}</b><small>${[nat && !est && e.estilo, e.nivel, e.dur ? e.dur + ' s' : '', e.fuente].filter(Boolean).map(esc).join(' · ')}</small></span></button>${est && !f.q && !f.cat ? `<button class="icon" data-eo="${e.id}|-1" aria-label="Más fácil">↑</button><button class="icon" data-eo="${e.id}|1" aria-label="Más difícil">↓</button>` : ''}</div>`;
   const n = k => D.ejercicio.filter(e => e.deporte === k && vidId(e.video)).length;
   const vacia = !D.ejercicio.length && !D.plan.length;
   m.innerHTML = `<div class="row"><h2 class="grow">Biblioteca</h2><button class="btn pri" id="ne">+ Nuevo</button></div>
     ${vacia ? '<div class="card row"><div class="grow"><b>Biblioteca vacía</b><div class="small muted">Puedes empezar con los ejercicios de fuerza del mesociclo High Force (con vídeo), calentamientos de natación de @swimcoachjj y los dos planes High Force de 4 semanas.</div></div><button class="btn pri" id="ini">Cargar biblioteca inicial</button></div>' : ''}
     <div class="chips">${Object.entries(DEP).map(([k, v]) => `<button class="chip" data-bd="${k}" aria-pressed="${f.dep === k}"><i style="--c:${v.c}"></i>${v.n} · ${n(k)}</button>`).join('')}</div>
+    ${nat ? `<div class="seg2" role="group" aria-label="Estilo"><button type="button" data-est="" aria-pressed="${!est}">Todos</button>${ESTILOS.map(k => `<button type="button" data-est="${k}" aria-pressed="${est === k}">${k}<small>${nEst(k)}</small></button>`).join('')}${nEst('-') ? `<button type="button" data-est="-" aria-pressed="${est === '-'}">Sin estilo<small>${nEst('-')}</small></button>` : ''}</div>` : ''}
     <div class="row"><input class="f grow" id="bq" placeholder="Buscar" value="${esc(f.q)}" style="max-width:320px"><select class="f" id="bc" style="max-width:260px"><option value="">Todas las categorías</option>${(CATS[f.dep] || []).map(c => `<option ${c === f.cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
-    ${lista.length ? grupos.map(g => `<h3 style="margin-top:6px">${esc(g.cat || 'Sin categoría')} <span class="small muted">· ${g.l.length}</span></h3><div class="libgrid">${g.l.map(e => `<button class="item" data-e="${e.id}">${vidId(e.video) ? `<img src="https://i.ytimg.com/vi/${vidId(e.video)}/default.jpg" alt="" width="48" height="36" style="border-radius:6px;object-fit:cover;flex:none" loading="lazy">` : ''}<div class="t"><b>${esc(e.nombre)}</b><small>${e.dur ? e.dur + ' s' : ''}${e.dur && e.fuente ? ' · ' : ''}${e.fuente ? esc(e.fuente) : ''}</small></div></button>`).join('')}</div>`).join('') : '<div class="empty">No hay nada en esta categoría todavía.</div>'}`;
+    ${est && lista.length ? `<p class="small muted" style="margin:0">De más fácil a más difícil. Usa las flechas para cambiar el orden.</p><div class="list">${lista.map(tarjeta).join('')}</div>`
+      : lista.length ? grupos.map(g => `<h3 style="margin-top:6px">${esc(g.cat || 'Sin categoría')} <span class="small muted">· ${g.l.length}</span></h3><div class="libgrid">${g.l.map(e => tarjeta(e)).join('')}</div>`).join('') : '<div class="empty">No hay nada aquí todavía.</div>'}`;
   m.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => { f.dep = b.dataset.bd; f.cat = ''; vBiblioteca(m); });
+  m.querySelectorAll('[data-est]').forEach(b => b.onclick = () => { f.est = b.dataset.est; vBiblioteca(m); });
+  m.querySelectorAll('[data-eo]').forEach(b => b.onclick = () => {
+    const [id, d] = b.dataset.eo.split('|'), i = lista.findIndex(e => e.id === id), j = i + +d;
+    if (j < 0 || j >= lista.length) return;
+    const nueva = lista.slice(); [nueva[i], nueva[j]] = [nueva[j], nueva[i]];
+    const docs = nueva.map((e, k) => ({ e, k: (k + 1) * 10 })).filter(x => x.e.orden !== x.k).map(x => ({ tipo: 'ejercicio', doc: { ...x.e, orden: x.k } }));
+    guardar(docs); const y = scrollY; vBiblioteca(m); scrollTo(0, y);
+  });
   $('#bq').oninput = e => { f.q = e.target.value; clearTimeout(f._t); f._t = setTimeout(() => { vBiblioteca(m); const i = $('#bq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
   $('#bc').onchange = e => { f.cat = e.target.value; vBiblioteca(m); };
   const bi = $('#ini'); if (bi) bi.onclick = async () => { bi.disabled = true; try { const docs = await (await fetch('inicial.json')).json(); guardar(docs); toast('Biblioteca cargada'); renderCoach(); } catch (e) { bi.disabled = false; toast('No se pudo cargar'); } };
-  $('#ne').onclick = () => editEjercicio({ id: uid(), nombre: '', deporte: f.dep, cat: f.cat || (CATS[f.dep] || [])[0] || '', video: '', texto: '', def: {} }, true);
+  $('#ne').onclick = () => editEjercicio({ id: uid(), nombre: '', deporte: f.dep, cat: f.cat || (CATS[f.dep] || [])[0] || '', estilo: est && est !== '-' ? est : '', video: '', texto: '', def: {} }, true);
   m.querySelectorAll('[data-e]').forEach(b => b.onclick = () => editEjercicio(clone(byId('ejercicio', b.dataset.e))));
 }
 function editEjercicio(e, nuevo) {
@@ -946,6 +973,8 @@ function editEjercicio(e, nuevo) {
     <div class="grid2"><label class="l">Deporte<select class="f" id="ed2">${Object.entries(DEP).map(([k, v]) => `<option value="${k}" ${k === e.deporte ? 'selected' : ''}>${v.n}</option>`).join('')}</select></label>
     <label class="l">Categoría<input class="f" id="ec" value="${esc(e.cat || '')}" list="cats"></label></div>
     <datalist id="cats">${(CATS[e.deporte] || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    ${e.deporte === 'natacion' ? `<div class="grid2"><label class="l">Estilo<select class="f" id="ees"><option value="">—</option>${ESTILOS.map(k => `<option ${k === e.estilo ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <label class="l">Dificultad<select class="f" id="eni"><option value="">—</option>${NIVELES.map(k => `<option ${k === e.nivel ? 'selected' : ''}>${k}</option>`).join('')}</select></label></div>` : ''}
     <label class="l">Vídeo de YouTube (máximo 10 s, solo la ejecución)<input class="f" id="ev" value="${esc(e.video || '')}" placeholder="https://www.youtube.com/shorts/…"></label>
     <p class="small" id="evDur">${e.video && !vidId(e.video) ? '⚠ No es un enlace de YouTube.' : e.dur ? `Duración: ${e.dur} s ${e.dur <= 10 ? '✓' : '· ⚠ supera los 10 s'}` : ''}</p>
     ${vidId(e.video) ? `<button type="button" class="thumb" ${tramo(e.video)} data-n="${esc(e.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${vidId(e.video)}/hqdefault.jpg" alt=""><span>${PLAY}</span></button>` : ''}
@@ -953,7 +982,7 @@ function editEjercicio(e, nuevo) {
     <label class="l">Fuente<input class="f" id="ef" value="${esc(e.fuente || '')}" placeholder="p. ej. @swimcoachjj, 19/10/26"></label>
     <div class="l">Valores por defecto al añadirlo a una sesión<div class="grid2">${(CAMPOS[e.deporte] || CAMPOS.otro).map(([k, n]) => `<label class="l">${n}<input class="f" data-df="${k}" value="${esc(e.def[k] || '')}"></label>`).join('')}</div></div></div>
     ${nuevo ? '' : '<button class="btn danger" id="dele">Borrar de la biblioteca</button>'}`;
-  const leer = () => { e.nombre = $('#en').value.trim(); e.deporte = $('#ed2').value; e.cat = $('#ec').value.trim(); e.video = $('#ev').value.trim(); e.texto = $('#et').value; e.fuente = $('#ef').value.trim(); document.querySelectorAll('[data-df]').forEach(i => { if (i.value) e.def[i.dataset.df] = i.value; else delete e.def[i.dataset.df]; }); };
+  const leer = () => { e.nombre = $('#en').value.trim(); e.deporte = $('#ed2').value; e.cat = $('#ec').value.trim(); e.video = $('#ev').value.trim(); e.texto = $('#et').value; e.fuente = $('#ef').value.trim(); if ($('#ees')) { e.estilo = $('#ees').value; e.nivel = $('#eni').value; } document.querySelectorAll('[data-df]').forEach(i => { if (i.value) e.def[i.dataset.df] = i.value; else delete e.def[i.dataset.df]; }); };
   abrirEd(nuevo ? 'Nuevo ejercicio' : e.nombre, pinta(), () => { leer(); if (!e.nombre) return toast('Falta el nombre'), false; if (e.video && !vidId(e.video)) return toast('El vídeo tiene que ser un enlace de YouTube'), false; if (e.dur > 10) return toast(`El vídeo dura ${e.dur} s: elige uno de 10 s o menos`), false; if (!vidId(e.video)) return toast('Falta el vídeo de YouTube: la biblioteca es solo de vídeos. Los entrenamientos escritos van en Base de datos.', 4000), false; guardar([{ tipo: 'ejercicio', doc: e }]); renderCoach(); });
   const enl = () => {
     $('#ed2').onchange = () => { leer(); $('#edBody').innerHTML = pinta(); enl(); };

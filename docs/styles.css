@@ -300,3 +300,11 @@ table.sets td.kg{font-weight:700}
 .card.strava{border-color:color-mix(in srgb,#fc4c02 30%,var(--line))}
 .actm{display:flex;flex-direction:column;gap:1px;text-decoration:none;border-radius:10px;padding:6px 8px;background:color-mix(in srgb,#fc4c02 8%,var(--card));border-left:4px solid #fc4c02;font-size:12px}
 .actm span{color:#fc4c02;line-height:0}.actm b{font-size:12px}.actm small{font-size:11px;color:var(--muted);font-family:var(--f-num)}
+.seg2{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:var(--sh)}
+.seg2 button{flex:none;border:0;background:transparent;border-radius:10px;padding:7px 12px;font-weight:700;font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.seg2 button small{font-family:var(--f-num);font-size:11px;opacity:.7}
+.seg2 button[aria-pressed="true"]{background:var(--hero1);color:#fff}
+.ejrow{padding:6px 8px}.ejrow .lnkb{flex:1;min-width:0;display:flex;gap:10px;align-items:center;border:0;background:none;text-align:left;padding:4px}
+.ejrow .lnkb span{display:flex;flex-direction:column;min-width:0}.ejrow .lnkb small{color:var(--muted);font-size:12px}
+.ejrow .pos{width:26px;height:26px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+#bq,#rq{min-width:160px}
