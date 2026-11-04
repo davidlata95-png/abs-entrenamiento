@@ -242,7 +242,7 @@ function api_(q) {
     }
     deps = deps.map(d => ({ id: d.id, nombre: d.nombre, nuevo: !d.pin }));
     deps.sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
-    return { ok: true, deportistas: deps, grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue() };
+    return { ok: true, deportistas: deps, grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue(), pushApp: props_().getProperty('PUSH_APP') || '' };
   }
   if (a === 'unirse') {
     const filas = leerDatos_();
@@ -256,6 +256,7 @@ function api_(q) {
     const yo = igual.find(d => !d.pin || String(d.pin) === String(q.pin));
     if (yo) {
       if (!yo.pin) yo.pin = String(q.pin);
+      fichaAlta_(yo, q.ficha);
       yo.grupos = [...new Set([...(yo.grupos || []), g.id])];
       delete yo.archivado;
       guardarDocs_([{ tipo: 'deportista', doc: yo }]);
@@ -263,7 +264,9 @@ function api_(q) {
     }
     if (igual.length) return { ok: false, error: 'existe' };
     const d = { id: 'd' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), nombre, pin: String(q.pin), grupos: [g.id], deportes: g.deportes || [], notas: '', alta: 'enlace' };
+    fichaAlta_(d, q.ficha);
     guardarDocs_([{ tipo: 'deportista', doc: d }]);
+    push_(['coach'], 'Nuevo en ' + g.nombre, nombre + ' se ha unido al grupo.');
     return { ok: true, id: d.id };
   }
   if (a === 'login' || a === 'registro') {
@@ -276,7 +279,11 @@ function api_(q) {
       reg.dep = dep.id;
       const ses = docs_(filas.filter(r => r.tipo === 'sesion' && (r.id === reg.ses || r.id === reg.id)), 'sesion')[0];
       if (ses && ses.grupo) { reg.ses = ses.id; reg.id = ses.id + '~' + dep.id; }
+      const antes = doc_(filas.find(r => r.tipo === 'registro' && r.id === reg.id) || { json: 'null' }) || {};
       guardarDocs_([{ tipo: 'registro', doc: reg }]);
+      const nuevos = Object.keys(reg.coment || {}).filter(k => reg.coment[k] && reg.coment[k] !== (antes.coment || {})[k]).map(k => reg.coment[k]);
+      if (reg.nota && reg.nota !== antes.nota) nuevos.push(reg.nota);
+      if (nuevos.length) push_(['coach'], dep.nombre + ' ha comentado' + (ses ? ' · ' + (ses.titulo || '') : ''), nuevos.join(' · ').slice(0, 180));
       anotarCarga_(reg, dep, ses);
       anotarSeries_(reg, dep, ses);
       return { ok: true };
@@ -291,7 +298,30 @@ function api_(q) {
     const ejercicios = filas.filter(r => r.tipo === 'ejercicio' && usados[r.id]).map(doc_).filter(Boolean);
     const grupos = docs_(filas, 'grupo').filter(g => (dep.grupos || []).indexOf(g.id) >= 0).map(g => ({ id: g.id, nombre: g.nombre }));
     const { pin, ...pub } = dep;
-    return { ok: true, dep: pub, sesiones, registros, ejercicios, grupos, actividades, strava: stravaEstadoDep_(dep.id) };
+    const mensajes = filas.filter(r => r.tipo === 'mensaje' && r.ref === dep.id).map(doc_).filter(Boolean);
+    const checkins = filas.filter(r => r.tipo === 'checkin' && r.ref === dep.id).map(doc_).filter(Boolean);
+    return { ok: true, dep: pub, sesiones, registros, ejercicios, grupos, actividades, mensajes, checkins, strava: stravaEstadoDep_(dep.id), pushApp: props_().getProperty('PUSH_APP') || '' };
+  }
+  // El deportista guarda sus mensajes al entrenador y su check-in semanal
+  if (a === 'depGuardar') {
+    const dep = deportista_(q.id, q.pin, false);
+    if (!dep) return { ok: false, error: 'pin' };
+    const filas = leerDatos_(), docs = [];
+    (q.docs || []).forEach(x => {
+      if (!x || !x.doc || ['mensaje', 'checkin'].indexOf(x.tipo) < 0) return;
+      const d = x.doc; d.dep = dep.id;
+      if (x.tipo === 'checkin') d.id = dep.id + '~' + String(d.semana || '').slice(0, 10);
+      if (x.tipo === 'mensaje') { d.de = 'dep'; d.id = String(d.id || ''); if (!/^m[\w-]{4,40}$/.test(d.id)) return; }
+      const ya = filas.find(r => r.tipo === x.tipo && r.id === d.id);
+      if (ya && ya.ref !== dep.id) return;
+      docs.push({ tipo: x.tipo, doc: d });
+    });
+    if (docs.length) guardarDocs_(docs);
+    docs.forEach(x => {
+      if (x.tipo === 'mensaje') push_(['coach'], 'Mensaje de ' + dep.nombre, String(x.doc.txt || '').slice(0, 180));
+      if (x.tipo === 'checkin') { const c = x.doc, mal = (+c.fatiga >= 4) || (+c.molestias >= 4) || (+c.estres >= 4) || (+c.sueno && +c.sueno <= 2); if (mal) push_(['coach'], 'Check-in de ' + dep.nombre, 'Sueño ' + c.sueno + ' · fatiga ' + c.fatiga + ' · molestias ' + c.molestias + ' · estrés ' + c.estres + ' · motivación ' + c.motivacion); }
+    });
+    return { ok: true, n: docs.length };
   }
   // El deportista conecta o desconecta su Strava, o pide traer lo último
   if (a === 'strava') {
@@ -316,7 +346,15 @@ function api_(q) {
       leerDatos_().forEach(r => { const d = doc_(r); if (d) (out[r.tipo] = out[r.tipo] || []).push(d); });
       return { ok: true, datos: out };
     }
-    if (q.op === 'guardar') { guardarDocs_(q.docs || []); return { ok: true }; }
+    if (q.op === 'guardar') {
+      guardarDocs_(q.docs || []);
+      (q.docs || []).filter(x => x.tipo === 'mensaje' && x.doc && x.doc.de === 'coach' && !x.doc.avisado).forEach(x => push_([x.doc.dep], 'Tu entrenador te ha contestado', String(x.doc.txt || '').slice(0, 180)));
+      return { ok: true };
+    }
+    // Avisos al móvil (OneSignal): App ID (público) y clave de la API REST (secreta, en las propiedades del script)
+    if (q.op === 'pushConfig') { const p = props_(); p.setProperty('PUSH_APP', String(q.appId || '').trim()); if (q.key) p.setProperty('PUSH_KEY', String(q.key).trim()); return { ok: true, estado: pushEstado_() }; }
+    if (q.op === 'pushEstado') return { ok: true, estado: pushEstado_() };
+    if (q.op === 'pushPrueba') { const r = push_([String(q.a2 || 'coach')], 'ABS Entrenamiento', 'Aviso de prueba ✓'); return { ok: true, r: r }; }
     if (q.op === 'borrar') { borrarDocs_(q.items || []); return { ok: true }; }
     // Asistente IA: la clave de la API de Anthropic se guarda en las propiedades del script (no en la hoja)
     if (q.op === 'iaGuardarClave') { PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', String(q.key || '').trim()); return { ok: true }; }
@@ -432,3 +470,43 @@ function instalarStravaCadaHora() {
   ScriptApp.newTrigger('sincronizarStrava').timeBased().everyHours(1).create();
 }
 function sincronizarStrava() { const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return; try { stravaSyncTodos_(30); } finally { lock.releaseLock(); } }
+
+
+// ===================== Avisos al móvil (OneSignal) =====================
+// Cada móvil queda asociado a su deportista (external_id = id del deportista; el entrenador = "coach").
+function pushEstado_() { return { appId: props_().getProperty('PUSH_APP') || '', conClave: !!props_().getProperty('PUSH_KEY') }; }
+function push_(ids, titulo, texto, url) {
+  const app = props_().getProperty('PUSH_APP'), key = props_().getProperty('PUSH_KEY');
+  ids = (ids || []).filter(Boolean).map(String);
+  if (!app || !key || !ids.length) return 'sin configurar';
+  try {
+    const r = UrlFetchApp.fetch('https://api.onesignal.com/notifications?c=push', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { Authorization: 'Key ' + key },
+      payload: JSON.stringify({ app_id: app, target_channel: 'push', include_aliases: { external_id: ids }, headings: { en: titulo, es: titulo }, contents: { en: texto || ' ', es: texto || ' ' }, url: url || URL_APP_ })
+    });
+    return r.getResponseCode();
+  } catch (e) { return String(e); }
+}
+// Lo que el deportista escribe al unirse por enlace: objetivo, molestias y días disponibles
+function fichaAlta_(d, f) {
+  if (!f) return;
+  const hoy = Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd');
+  if (f.objetivo) d.objetivos = (d.objetivos || []).concat([{ id: 'o' + Date.now().toString(36), tipo: 'principal', titulo: String(f.objetivo).slice(0, 200), fecha: String(f.fechaObj || '').slice(0, 10) }]);
+  if (f.lesion) d.lesiones = (d.lesiones || []).concat([{ id: 'l' + Date.now().toString(36), desc: String(f.lesion).slice(0, 300), desde: hoy }]);
+  if (Array.isArray(f.dias) && f.dias.length) d.disponibilidad = f.dias.map(Number).filter(n => n >= 1 && n <= 7);
+}
+// Aviso de cada mañana: qué toca hoy (y los lunes, recordar el check-in). Se instala con instalarAvisos().
+function avisosDiarios() {
+  const filas = leerDatos_(), hoy = Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd');
+  const lunes = Utilities.formatDate(new Date(), 'Europe/Madrid', 'u') === '1';
+  const ses = docs_(filas, 'sesion').filter(s => s.fecha === hoy);
+  docs_(filas, 'deportista').filter(d => !d.archivado).forEach(d => {
+    const mias = ses.filter(s => s.dep === d.id || (s.grupo && (d.grupos || []).indexOf(s.grupo) >= 0));
+    if (mias.length) push_([d.id], 'Hoy toca entrenar', mias.map(s => s.titulo || s.deporte).join(' · ') + (lunes ? ' · Rellena tu check-in semanal' : ''));
+    else if (lunes) push_([d.id], 'Check-in semanal', 'Cuéntale a tu entrenador cómo llegas a la semana (1 minuto).');
+  });
+}
+function instalarAvisos() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'avisosDiarios').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('avisosDiarios').timeBased().everyDays(1).atHour(8).inTimezone('Europe/Madrid').create();
+}

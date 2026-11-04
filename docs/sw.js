@@ -1,6 +1,8 @@
 // Service worker: guarda la app para que abra rápido y sin conexión.
 // Los datos (Apps Script) y los vídeos no se guardan aquí: siempre van a la red.
-const CACHE = 'abs-v18';
+// Avisos al móvil (OneSignal): su código de avisos va dentro de este mismo service worker
+try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
+const CACHE = 'abs-v19';
 const APP = ['./', 'index.html', 'app.js', 'styles.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(APP)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
