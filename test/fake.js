@@ -36,6 +36,8 @@ function load() {
     PropertiesService: (() => { const P = {}; const sp = { getProperty: k => P[k] ?? null, setProperty: (k, v) => { P[k] = v; }, getKeys: () => Object.keys(P), deleteProperty: k => { delete P[k]; } }; return { getScriptProperties: () => sp }; })(),
     Utilities: {
       DigestAlgorithm: { SHA_256: 1 }, Charset: { UTF_8: 1 },
+      getUuid: () => crypto.randomUUID(),
+      formatDate: (d, tz, f) => f === 'u' ? String((d.getDay() + 6) % 7 + 1) : d.toISOString().slice(0, 10),
       computeHmacSha256Signature: (s, k) => Array.from(crypto.createHmac('sha256', k).update(s).digest()),
       base64EncodeWebSafe: b => Buffer.from(b.map(x => x & 255)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
       computeDigest: (_, s) => Array.from(crypto.createHash('sha256').update(s).digest()).map(b => b > 127 ? b - 256 : b),

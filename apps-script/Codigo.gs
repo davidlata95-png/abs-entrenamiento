@@ -242,7 +242,25 @@ function api_(q) {
     }
     deps = deps.map(d => ({ id: d.id, nombre: d.nombre, nuevo: !d.pin }));
     deps.sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
-    return { ok: true, deportistas: deps, grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue(), pushApp: props_().getProperty('PUSH_APP') || '' };
+    return { ok: true, deportistas: deps, grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue(), pushApp: props_().getProperty('PUSH_APP') || '', altaOk: q.alta ? altaValida_(q.alta) : undefined };
+  }
+  // Alta individual con el enlace personal del entrenador (…/?alta=CÓDIGO): la persona crea su perfil y su PIN
+  if (a === 'alta') {
+    if (!altaValida_(q.alta)) return { ok: false, error: 'enlace' };
+    const nombre = String(q.nombre || '').trim().replace(/\s+/g, ' ');
+    if (nombre.length < 2) return { ok: false, error: 'nombre' };
+    if (!pinOk_(q.pin)) return { ok: false, error: 'pin' };
+    const filas = leerDatos_();
+    const igual = docs_(filas, 'deportista').filter(d => normN_(d.nombre) === normN_(nombre));
+    const yo = igual.find(d => !d.pin);
+    if (yo) { yo.pin = String(q.pin); delete yo.archivado; fichaAlta_(yo, q.ficha); guardarDocs_([{ tipo: 'deportista', doc: yo }]); push_(['coach'], 'Nuevo deportista', nombre + ' ha creado su perfil.'); return { ok: true, id: yo.id }; }
+    if (igual.length) return { ok: false, error: 'existe' };
+    const dps = ['fuerza', 'natacion', 'carrera', 'ciclismo', 'otro'];
+    const d = { id: 'd' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), nombre, pin: String(q.pin), grupos: [], deportes: (q.deportes || []).filter(x => dps.indexOf(x) >= 0), notas: '', alta: 'enlace personal' };
+    fichaAlta_(d, q.ficha);
+    guardarDocs_([{ tipo: 'deportista', doc: d }]);
+    push_(['coach'], 'Nuevo deportista', nombre + ' ha creado su perfil. Asígnale su plan.');
+    return { ok: true, id: d.id };
   }
   if (a === 'unirse') {
     const filas = leerDatos_();
@@ -354,6 +372,7 @@ function api_(q) {
     // Avisos al móvil (OneSignal): App ID (público) y clave de la API REST (secreta, en las propiedades del script)
     if (q.op === 'pushConfig') { const p = props_(); p.setProperty('PUSH_APP', String(q.appId || '').trim()); if (q.key) p.setProperty('PUSH_KEY', String(q.key).trim()); return { ok: true, estado: pushEstado_() }; }
     if (q.op === 'pushEstado') return { ok: true, estado: pushEstado_() };
+    if (q.op === 'altaCodigo') { let c = props_().getProperty('ALTA_CODE'); if (!c || q.nuevo) { c = Utilities.getUuid().replace(/-/g, '').slice(0, 10); props_().setProperty('ALTA_CODE', c); } return { ok: true, codigo: c }; }
     if (q.op === 'pushPrueba') { const r = push_([String(q.a2 || 'coach')], 'ABS Entrenamiento', 'Aviso de prueba ✓'); return { ok: true, r: r }; }
     if (q.op === 'borrar') { borrarDocs_(q.items || []); return { ok: true }; }
     // Asistente IA: la clave de la API de Anthropic se guarda en las propiedades del script (no en la hoja)
@@ -510,3 +529,6 @@ function instalarAvisos() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'avisosDiarios').forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('avisosDiarios').timeBased().everyDays(1).atHour(8).inTimezone('Europe/Madrid').create();
 }
+
+// Enlace personal de alta (…/?alta=CÓDIGO). El código se guarda en las propiedades del script y se puede cambiar.
+function altaValida_(c) { const k = props_().getProperty('ALTA_CODE'); return !!k && String(c || '').trim() === k; }

@@ -279,13 +279,45 @@ function codigoG() {
   if (u) LS.set('abs2-g', u.trim().toUpperCase());
   return LS.get('abs2-g', '');
 }
+const codigoAlta = () => new URLSearchParams(location.search).get('alta') || '';
 async function cargarLista() {
-  const g = codigoG();
-  try { const j = await api(g ? { a: 'lista', g } : { a: 'lista' }); if (j.ok) { if (j.grupoMal) LS.del('abs2-g'); S.lista = j; LS.set('abs2-lista', j); } }
+  const g = codigoG(), al = codigoAlta();
+  try { const j = await api(al ? { a: 'lista', alta: al } : g ? { a: 'lista', g } : { a: 'lista' }); if (j.ok) { if (j.grupoMal) LS.del('abs2-g'); S.lista = j; LS.set('abs2-lista', j); } }
   catch (e) { S.lista = LS.get('abs2-lista', null); }
 }
 function salir() { LS.del('abs2-auth'); LS.del('abs2-cache'); S.auth = null; location.reload(); }
 
+/* ---------- Alta con el enlace personal (…/?alta=CÓDIGO) ---------- */
+function pantallaAlta(L) {
+  const box = $('#lg'), pinIn = id => `<input class="f mono" id="${id}" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required>`;
+  if (L.altaOk === false) { box.innerHTML = `<h2>Enlace no válido</h2><p class="muted">Este enlace ya no sirve. Pide a tu entrenador el enlace nuevo.</p><button class="btn ghost sm" id="yaT">Ya tengo perfil: entrar</button>`; $('#yaT').onclick = () => { S.verLista = true; history.replaceState(null, '', location.pathname); pantallaAcceso(); }; return; }
+  box.innerHTML = `<h2>Crea tu perfil</h2><p class="muted small" style="margin-top:0">Tu entrenador te ha invitado a ABS Entrenamiento. Escribe tu nombre y elige un PIN de 4 cifras: es lo que usarás para entrar.</p>
+    <form id="fa" class="list"><label class="l">Nombre y apellido<input class="f" id="an" autocomplete="name" required></label>
+      <label class="l">Elige un PIN de 4 cifras${pinIn('ap')}</label><label class="l">Repite el PIN${pinIn('ap2')}</label>
+      <div class="l">¿Qué entrenas?<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-adp="${k}" aria-pressed="false"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
+      <label class="l">¿Cuál es tu objetivo? (opcional)<input class="f" id="aob" placeholder="p. ej. aprobar la oposición, bajar de 1:05 en 100 libre…"></label>
+      <label class="l">¿Tienes alguna lesión o molestia? (opcional)<input class="f" id="ale" placeholder="Si no, déjalo vacío"></label>
+      <div class="l">¿Qué días puedes entrenar? (opcional)<div class="chips">${DIAS.map((n, i) => `<button type="button" class="chip" data-adia="${i + 1}" aria-pressed="false">${n}</button>`).join('')}</div></div>
+      <button class="btn pri">Crear mi perfil y entrar</button><p id="erra" class="small" style="color:var(--bad)"></p></form>
+    <button class="btn ghost sm" id="yaT" type="button">Ya tengo perfil: entrar</button>`;
+  box.querySelectorAll('[data-adp],[data-adia]').forEach(b => b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'));
+  $('#yaT').onclick = () => { S.verLista = true; pantallaAcceso(); };
+  $('#fa').onsubmit = async e => {
+    e.preventDefault();
+    const nombre = $('#an').value.trim(), pin = $('#ap').value, err = $('#erra');
+    if (nombre.split(/\s+/).length < 2) return err.textContent = 'Escribe tu nombre y apellido.';
+    if (!/^\d{4}$/.test(pin)) return err.textContent = 'El PIN tiene que tener 4 cifras.';
+    if (pin !== $('#ap2').value) return err.textContent = 'Los dos PIN no coinciden.';
+    const sel = a => [...box.querySelectorAll(`[${a}][aria-pressed="true"]`)].map(b => b.getAttribute(a));
+    err.textContent = 'Creando tu perfil…';
+    try {
+      const j = await api({ a: 'alta', alta: codigoAlta(), nombre, pin, deportes: sel('data-adp'), ficha: { objetivo: $('#aob').value.trim(), lesion: $('#ale').value.trim(), dias: sel('data-adia').map(Number) } });
+      if (!j.ok) return err.textContent = ({ existe: 'Ya hay alguien con ese nombre. Pulsa «Ya tengo perfil» y entra con tu PIN.', enlace: 'Este enlace ya no sirve. Pide el nuevo a tu entrenador.', nombre: 'Escribe tu nombre y apellido.', pin: 'El PIN tiene que tener 4 cifras.' })[j.error] || 'No se pudo crear.';
+      history.replaceState(null, '', location.pathname); S.lista = null; entrarDep(j.id, pin);
+      setTimeout(() => toast('¡Listo! Tu entrenador ya puede prepararte el plan.', 4000), 1200);
+    } catch (x) { err.textContent = 'No hay conexión.'; }
+  };
+}
 /* ---------- Pantalla de acceso ---------- */
 async function pantallaAcceso(modo = 'dep') {
   document.body.innerHTML = `<main class="narrow"><div class="login"><div class="row"><div class="logo">ABS</div><div><b>ABS Entrenamiento</b><div class="small muted">Plan, registro y carga</div></div></div><div id="lg" class="card">Conectando con la hoja del entrenador…</div><div id="instL"></div></div></main>`;
@@ -310,6 +342,7 @@ async function pantallaAcceso(modo = 'dep') {
     return;
   }
   const deps = L.deportistas || [], G = L.grupo;
+  if (codigoAlta() && !S.verLista) return pantallaAlta(L);
   const pinIn = (id, extra = '') => `<input class="f mono" id="${id}" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required ${extra}>`;
   box.innerHTML = `${G ? `<p class="small muted" style="margin:0">Grupo</p><h2 style="margin-top:0">${esc(G.nombre)}</h2>` : '<h2>¿Quién eres?</h2>'}
     ${L.grupoMal ? '<p class="small" style="color:var(--bad)">Ese enlace de grupo no existe. Pide el enlace nuevo a tu entrenador.</p>' : ''}
@@ -459,6 +492,8 @@ function avisosCoach() {
     const kN = 'nh:' + d.id + ':' + noHechas.map(s => s.id).join(',');
     if (noHechas.length && !off[kN]) out.push({ k: kN, t: '⏳', h: `<b>${nom}</b> no ha registrado ${noHechas.length === 1 ? 'una sesión' : noHechas.length + ' sesiones'} en los últimos 7 días: ${noHechas.map(s => DIAS[(parseKey(s.fecha).getDay() + 6) % 7]).join(', ')}`, u: d.id });
     const activo = ss.some(s => s.fecha >= key(addDays(today(), -28)));
+    const kNu = 'nuevo:' + d.id;
+    if (/enlace/.test(d.alta || '') && !ss.length && !off[kNu]) out.push({ k: kNu, t: '👋', h: `<b>${nom}</b> se ha registrado y aún no tiene plan${(d.objetivos || [])[0]?.titulo ? ` · objetivo: <i>${esc(d.objetivos[0].titulo)}</i>` : ''}`, u: d.id, ficha: 1 });
     if (activo) {
       const prox = ss.filter(s => s.fecha >= lunS && s.fecha <= domS).length, ult = ss.map(s => s.fecha).sort().at(-1);
       const kS = 'sp:' + d.id + ':' + lunS;
@@ -518,12 +553,13 @@ function vInicio(m) {
 function vDeportistas(m) {
   const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const arch = D.deportista.filter(d => d.archivado);
-  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><label class="btn" style="cursor:pointer">Importar<input type="file" id="dimp" accept=".json,application/json" hidden></label><button class="btn" id="cfP">🔔 Avisos</button><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
+  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn pri" id="enA">🔗 Enlace para nuevos</button><label class="btn" style="cursor:pointer">Importar<input type="file" id="dimp" accept=".json,application/json" hidden></label><button class="btn" id="cfP">🔔 Avisos</button><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
     ${deps.length ? `<div class="list">${deps.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b><small>${esc([...(d.grupos || []).map(g => byId('grupo', g)?.nombre), d.grupo, (d.deportes || []).map(x => DEP[x]?.n).join(' · ')].filter(Boolean).join(' · '))}</small></div><span class="chip mono">${d.pin ? 'PIN ' + esc(d.pin) : 'Sin PIN'}</span></button>`).join('')}</div>` : '<div class="empty">Aún no hay deportistas. Crea el primero para asignarle sesiones o un plan.</div>'}
     ${arch.length ? `<details><summary class="muted small">Archivados (${arch.length})</summary><div class="list" style="margin-top:8px">${arch.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b></div></button>`).join('')}</div></details>` : ''}`;
   $('#nd').onclick = () => editDeportista();
   $('#cfS').onclick = () => configStrava();
   $('#cfP').onclick = () => configAvisos();
+  $('#enA').onclick = () => enlaceAlta();
   $('#dimp').onchange = e => { const fi = e.target.files[0]; e.target.value = ''; if (fi) importarArchivo(fi); };
   m.querySelectorAll('[data-d]').forEach(b => b.onclick = () => editDeportista(byId('deportista', b.dataset.d)));
 }
@@ -1692,6 +1728,21 @@ async function stravaSyncCoach(forzar) {
     if (['inicio', 'cal', 'dep'].includes(S.tab) && !$('#ed')?.open) renderCoach();
     if (forzar) toast(j.nuevas ? `${j.nuevas} actividades nuevas de Strava` : 'Strava al día');
   } catch (e) {}
+}
+// Enlace personal: quien lo abre crea su propio perfil con su PIN (sin grupo). Se puede cambiar para anular el anterior.
+async function enlaceAlta(nuevo) {
+  let j; try { j = await api({ a: 'coach', op: 'altaCodigo', clave: S.auth.clave, nuevo: nuevo ? 1 : 0 }); } catch (e) { return toast('Sin conexión'); }
+  if (!j.ok) return toast('Actualiza el Apps Script para usar el enlace de alta');
+  const url = `${location.origin}${location.pathname.replace(/index\.html$/, '')}?alta=${encodeURIComponent(j.codigo)}`;
+  abrirEd('Enlace para nuevos deportistas', `<div class="card list">
+    <p style="margin:0">Mándale este enlace a quien quieras (por WhatsApp, por ejemplo). Al abrirlo escribe su nombre, elige su PIN de 4 cifras y crea su propio perfil. No tienes que darle de alta tú.</p>
+    <div class="row"><input class="f mono grow" readonly value="${esc(url)}" id="aUrl" style="min-width:0"><button class="btn pri" id="aCp">Copiar</button>${navigator.share ? '<button class="btn" id="aSh">Compartir</button>' : ''}</div>
+    <p class="small muted" style="margin:0">Cuando alguien se registre te llegará un aviso y aparecerá en Deportistas y en Inicio («sin plan»). Desde su ficha le pones grupo o le asignas sesiones. Para unir a alguien directamente a un grupo, usa el enlace del grupo (pestaña Grupos).</p>
+    <button class="btn sm danger" id="aNew">Cambiar el enlace (el anterior deja de funcionar)</button></div>`, null, 'Cerrar');
+  $('#aUrl').onfocus = e => e.target.select();
+  $('#aCp').onclick = async () => { try { await navigator.clipboard.writeText(url); toast('Enlace copiado'); } catch (e) { $('#aUrl').select(); } };
+  const sh = $('#aSh'); if (sh) sh.onclick = () => navigator.share({ title: 'ABS Entrenamiento', text: 'Crea tu perfil en ABS Entrenamiento con este enlace:', url }).catch(() => {});
+  $('#aNew').onclick = () => { if (confirm('¿Crear un enlace nuevo? El que ya enviaste dejará de servir para darse de alta (quien ya tiene perfil sigue entrando igual).')) { cerrarEd(); enlaceAlta(true); } };
 }
 function configAvisos() {
   const e = S.pushE || {}, base = location.pathname.replace(/[^/]*$/, '');
