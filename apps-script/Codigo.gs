@@ -359,6 +359,20 @@ function api_(q) {
       return { ok: true };
     }
     if (!claveOk_(q.clave)) return { ok: false, error: 'clave' };
+    // Planificación de natación (swim coach): pestañas «Sesión dd-mm-aa» de la hoja Plani ABS/JUN, columnas tarea · tiempo · metros
+    if (q.op === 'plani') {
+      const id = props_().getProperty('PLANI_ID') || PLANI_ID_;
+      let ss; try { ss = SpreadsheetApp.openById(id); } catch (e) { return { ok: false, error: 'No se puede abrir la hoja de planificación' }; }
+      const p2 = n => ('0' + n).slice(-2), dias = [];
+      ss.getSheets().forEach(sh => {
+        const m = sh.getName().match(/^\s*Sesi[oó]n\s+(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})\s*$/i); if (!m) return;
+        const y = m[3].length === 2 ? '20' + m[3] : m[3], n = sh.getLastRow(); if (!n) return;
+        const filas = sh.getRange(1, 1, n, 3).getDisplayValues().filter(r => String(r[0]).trim() || String(r[2]).trim());
+        dias.push({ fecha: y + '-' + p2(m[2]) + '-' + p2(m[1]), hoja: sh.getName(), filas });
+      });
+      dias.sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+      return { ok: true, nombre: ss.getName(), dias };
+    }
     if (q.op === 'todo') {
       const out = {};
       leerDatos_().forEach(r => { const d = doc_(r); if (d) (out[r.tipo] = out[r.tipo] || []).push(d); });
@@ -397,6 +411,7 @@ function api_(q) {
 const URL_API_ = 'https://script.google.com/macros/s/AKfycbyYBd73ePdCyP2pho3jQjm6-5SmCijbgQuyz_87Mxhm6cHz_6yyVoRCx8CIhB5xBrXqEw/exec';
 const URL_APP_ = 'https://davidlata95-png.github.io/abs-entrenamiento/';
 const props_ = () => PropertiesService.getScriptProperties();
+const PLANI_ID_ = '1oVZb1YRDBtaPc8Wse6G9V9vLqtvRVUYByemGIXOsuEI'; // hoja «Plani ABS/JUN 26/27» (se puede cambiar con la propiedad PLANI_ID)
 const stravaCfg_ = () => ({ id: props_().getProperty('STRAVA_ID') || '', secret: props_().getProperty('STRAVA_SECRET') || '' });
 function firma_(txt) {
   const b = Utilities.computeHmacSha256Signature(String(txt), stravaCfg_().secret || 'abs');

@@ -97,7 +97,7 @@ function txtHTML(texto, dep) {
   if (dep !== 'natacion') return `<pre class="txt">${esc(texto)}</pre>`;
   const pintar = (seg, z) => {
     if (!z) return esc(seg);
-    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => `${a ?? c ?? ''}<b class="zp" data-z="${z}">${b || d}</b>`);
+    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => `${a ?? c ?? ''}<b class="zp" data-z="${z}">${b ? znDe('natacion', ZNAT_K[b.toLowerCase()]) : d}</b>`);
     return `<span class="zt" data-z="${z}">${marcado}</span>`;
   };
   const lineas = String(texto || '').split('\n').map(l => {
@@ -150,7 +150,7 @@ function calcSesion(s) {
   return n ? { min, metros, ecos: Math.round(bruto * ECO_DEP[dep].f), n } : null;
 }
 const ecoDe = s => calcSesion(s) || s.eco || null;
-const ecoTxt = e => e ? `${e.metros ? fmtDist(e.metros) + ' · ' : ''}${e.ecos} ECOs` : '';
+const ecoTxt = e => e ? [e.metros && fmtDist(e.metros), e.ecos && e.ecos + ' ECOs'].filter(Boolean).join(' · ') : '';
 const txtFila = (f, dep) => `${+f.rep > 1 ? f.rep + ' × ' : ''}${f.m1}${{ m: ' m', km: ' km', min: "'", seg: '"', h: ' h' }[f.u1] || ''} ${znDe(dep, f.z1 || 'r1')}${+f.m2 ? ` · d/${f.m2}${{ m: ' m', km: ' km', min: "'", seg: '"' }[f.u2 || 'seg']}${f.z2 && f.z2 !== 'r0' ? ' ' + znDe(dep, f.z2) : ''}` : ''}`;
 
 /* Lee la forma de escribir de Train2Go ("8x50 d/10\" R2", "3x(700 R1+ d/30\" + 4x25 R3+ d/15\")", "10' R0-R1",
@@ -757,7 +757,7 @@ function vCalendario(m) {
   const fin = addDays(lun, 6), deSemana = ses.filter(s => s.fecha >= key(lun) && s.fecha <= key(fin));
   const ecoSem = deSemana.reduce((a, s) => a + (conEcos(s.deporte) ? ecoDe(s)?.ecos || 0 : 0), 0);
   const resumen = (ecoSem ? `${ecoSem} ECOs previstos · ` : '') + (Q.grupo ? `${miembros(Q.grupo).length} personas · ${deSemana.length} ${deSemana.length === 1 ? 'sesión' : 'sesiones'}` : `Carga registrada: ${deSemana.reduce((a, s) => a + ua(byId('registro', s.id)), 0)} UA`);
-  m.innerHTML = `<div class="row calbar">${selDep('cd')}<div class="row grow" style="justify-content:flex-end">${Q.grupo ? '<button class="btn sm" id="ce">Copiar enlace</button>' : ''}<button class="btn sm" id="inat">🏊 Importar natación</button><button class="btn sm" id="ap">Asignar plan</button><button class="btn sm" id="cs">Copiar semana a…</button><button class="btn sm ${S.ui.selOn ? 'pri' : ''}" id="selB">${S.ui.selOn ? 'Terminar selección' : 'Seleccionar'}</button></div></div>
+  m.innerHTML = `<div class="row calbar">${selDep('cd')}<div class="row grow" style="justify-content:flex-end">${Q.grupo ? '<button class="btn sm" id="ce">Copiar enlace</button>' : ''}<button class="btn sm" id="ipl">📋 De la planificación</button><button class="btn sm" id="inat">🏊 Pegar natación</button><button class="btn sm" id="ap">Asignar plan</button><button class="btn sm" id="cs">Copiar semana a…</button><button class="btn sm ${S.ui.selOn ? 'pri' : ''}" id="selB">${S.ui.selOn ? 'Terminar selección' : 'Seleccionar'}</button></div></div>
     ${fichaAviso(Q)}
     ${barraTemporada(lun, ses, objetivosDe(Q))}
     <div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(fin)}</b><span>${resumen}</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
@@ -772,6 +772,7 @@ function vCalendario(m) {
   $('#nw').onclick = () => { S.ui.semana = key(addDays(lun, 7)); renderCoach(); };
   $('#ap').onclick = () => asignarPlan();
   $('#inat').onclick = () => importarNatacion(Q.k);
+  $('#ipl').onclick = () => importarPlani(Q.k);
   $('#cs').onclick = () => copiarSemana(lun, Q);
   const ce = $('#ce'); if (ce) ce.onclick = () => copiarEnlace(Q.grupo);
   m.querySelectorAll('[data-add]').forEach(b => b.onclick = () => nuevaSesion(b.dataset.add));
@@ -942,6 +943,83 @@ function importarNatacion(k) {
     }).join('') : '';
   };
   ['#inQ', '#inT', '#inF'].forEach(id => $(id).addEventListener('input', prev));
+}
+/* ---------- Importar de la planificación de natación (swim coach) ----------
+   Lee las pestañas «Sesión dd-mm-aa» de la hoja Plani ABS/JUN: cada fila es tarea · tiempo · metros, con cabeceras
+   «Warm up: …», «MAIN SET — ABS · …», «Warm down: …», filas «Transiciones» y «TOTAL ABS» / «TOTAL INFANTIL»
+   que cierran la parte de cada grupo. Si una parte no trae calentamiento, usa el de la primera. */
+const hms = t => { const m = String(t || '').trim().match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/); return m ? (m[3] !== undefined ? +m[1] * 60 + +m[2] + +m[3] / 60 : +m[1] + +m[2] / 60) : 0; };
+const CAB_RE = /^(warm\s*-?\s*up|main\s*set|warm\s*-?\s*down|cool\s*-?\s*down|calentamiento|parte principal|vuelta a la calma)\b/i;
+function partesPlani(filas) {
+  const segs = []; let cur = { bloques: [] }, b = null;
+  filas.forEach(([t, ti, me]) => {
+    t = String(t || '').trim(); if (!t) return;
+    const tot = t.match(/^TOTAL\s+(.+)$/i);
+    if (tot) { if (cur.bloques.length) { cur.nombre = tot[1].trim(); cur.min = hms(ti); cur.metros = +String(me).replace(/\D/g, '') || 0; segs.push(cur); } cur = { bloques: [] }; b = null; return; }
+    if (/^transici/i.test(t)) return;
+    if (CAB_RE.test(t)) {
+      const tipo = /main|principal/i.test(t) ? 'main' : /up|calentamiento/i.test(t) ? 'up' : 'down';
+      let nombre = t.split(':')[0].replace(/\s*[—–-]\s*[A-ZÁÉÍÓÚÑ0-9 ]+?(?=\s*·|$)/, '').trim();
+      nombre = nombre.replace(/^main\s*set/i, 'Main set').replace(/^warm\s*-?\s*up/i, 'Warm up').replace(/^warm\s*-?\s*down/i, 'Warm down');
+      const foco = tipo === 'main' ? (t.split(':')[0].split('·')[1] || '').trim() : '';
+      b = { tipo, nombre, foco, min: hms(ti), metros: +String(me).replace(/\D/g, '') || 0, items: [] }; cur.bloques.push(b); return;
+    }
+    if (!b) { b = { tipo: 'main', nombre: 'Entrenamiento', min: 0, metros: 0, items: [] }; cur.bloques.push(b); }
+    b.items.push({ texto: t, min: hms(ti), metros: +String(me).replace(/\D/g, '') || 0 });
+  });
+  if (cur.bloques.length) { cur.nombre = cur.nombre || 'Sesión'; segs.push(cur); }
+  const up = segs[0]?.bloques.find(x => x.tipo === 'up');
+  segs.forEach(sg => { if (up && !sg.bloques.some(x => x.tipo === 'up')) sg.bloques.unshift(up); });
+  return segs;
+}
+function sesionPlani(dia, parte, Q) {
+  const sg = partesPlani(dia.filas).find(x => x.nombre.toUpperCase() === parte.toUpperCase()); if (!sg) return null;
+  const main = sg.bloques.find(x => x.tipo === 'main');
+  const s = { id: `plani-${(Q.grupo ? 'g' + Q.grupo.id : Q.dep.id)}-${dia.fecha}-${parte.toLowerCase().replace(/[^a-z0-9]/g, '')}`, ...Q.asig, fecha: dia.fecha, deporte: 'natacion', origen: 'Planificación · ' + dia.hoja,
+    titulo: main?.foco || 'Natación', duracion: Math.round(sg.min) || '', bloques: [] };
+  const r3s = ritmoR3(s, 'natacion'); let todas = true;
+  s.bloques = sg.bloques.map(b => ({ nombre: b.nombre + (b.metros ? ` · ${b.metros} m` : ''), tiempo: b.min ? fmtMin(b.min) : '', items: b.items.map(x => {
+    const it = { nombre: '', texto: x.texto, dist: x.metros ? String(x.metros) : '', tiempo: x.min ? String(Math.round(x.min)) : '' };
+    const fs = leerT2G(x.texto, 'natacion', r3s).filter(f => +f.m1), m = fs.reduce((a, f) => a + calcFila(f, 'natacion', r3s).metros, 0);
+    if (x.metros && Math.abs(m - x.metros) <= x.metros * .05) it.filas = fs; else if (x.metros) todas = false;
+    return it;
+  }) }));
+  if (!todas) s.bloques.forEach(b => b.items.forEach(it => delete it.filas));
+  s.eco = { metros: sg.metros || sg.bloques.reduce((a, b) => a + b.metros, 0), ecos: 0 };
+  return s;
+}
+async function importarPlani(k) {
+  toast('Leyendo la planificación…', 8000);
+  let j; try { j = await api({ a: 'coach', op: 'plani', clave: S.auth.clave }); } catch (e) { return toast('No se pudo leer la planificación'); }
+  if (!j.ok) return toast(j.error === 'clave' ? 'Vuelve a entrar como entrenador' : j.error || 'No se pudo leer la planificación');
+  if (!j.dias.length) return toast('No hay pestañas «Sesión dd-mm-aa» en ' + j.nombre);
+  const grupos = [...gruposOrd().map(g => ['g:' + g.id, 'Grupo · ' + g.nombre]), ...depsOrd().map(d => [d.id, d.nombre])];
+  const partes = [...new Set(j.dias.flatMap(d => partesPlani(d.filas).map(x => x.nombre.toUpperCase())))];
+  const prefs = LS.get('abs2-plani', {}), lun = key(monday(today()));
+  abrirEd('De la planificación', `<div class="card list"><p class="muted small" style="margin:0">Hoja «${esc(j.nombre)}» · pestañas «Sesión dd-mm-aa»</p>
+    <label class="l">Para<select class="f" id="plQ">${opts(grupos, k)}</select></label>
+    <label class="l">Parte de la sesión<select class="f" id="plP">${opts(partes.map(p => [p, p]), prefs[k] || partes[0])}</select><small class="muted">Cada día de la planificación trae una parte por grupo (TOTAL ABS, TOTAL INFANTIL…).</small></label>
+    <div class="l">Días<div class="chips">${j.dias.map(d => `<button type="button" class="chip" data-pld="${d.fecha}" aria-pressed="${d.fecha >= lun}">${fmtD(parseKey(d.fecha))}</button>`).join('')}</div><small class="muted">Si un día ya se importó, se actualiza (no se duplica).</small></div>
+    <div id="plV"></div></div>`, () => {
+    const Q = quien($('#plQ').value), parte = $('#plP').value;
+    const sel = j.dias.filter(d => document.querySelector(`[data-pld="${d.fecha}"]`).getAttribute('aria-pressed') === 'true');
+    const docs = sel.map(d => sesionPlani(d, parte, Q)).filter(Boolean).map(doc => ({ tipo: 'sesion', doc }));
+    if (!docs.length) return toast('Elige al menos un día con esa parte'), false;
+    prefs[Q.k] = parte; LS.set('abs2-plani', prefs);
+    guardar(docs); S.ui.dep = Q.k; S.ui.semana = key(monday(parseKey(docs[0].doc.fecha))); renderCoach();
+    toast(`${docs.length} ${docs.length === 1 ? 'sesión' : 'sesiones'} de ${parte} para ${Q.nombre}`);
+  }, 'Importar');
+  const vista = () => {
+    const Q = quien($('#plQ').value), parte = $('#plP').value;
+    const sel = j.dias.filter(d => document.querySelector(`[data-pld="${d.fecha}"]`).getAttribute('aria-pressed') === 'true');
+    $('#plV').innerHTML = sel.map(d => { const s = sesionPlani(d, parte, Q); if (!s) return `<p class="small muted">${fmtLong(parseKey(d.fecha))}: no tiene parte ${esc(parte)}</p>`;
+      const ya = byId('sesion', s.id);
+      return `<details class="card list" style="margin-top:8px"><summary class="small"><b>${fmtLong(parseKey(d.fecha))}</b> · ${esc(s.titulo)} · ${ecoTxt(ecoDe(s))}${s.duracion ? ` · ${s.duracion} min` : ''}${ya ? ' · <span class="warn">se actualiza</span>' : ''}</summary>
+        ${s.bloques.map(b => `<p class="small" style="margin:8px 0 4px"><b>${esc(b.nombre)}</b>${b.tiempo ? ' · ' + b.tiempo : ''}</p>${b.items.map(it => txtHTML(it.texto, 'natacion')).join('<div style="height:6px"></div>')}`).join('')}</details>`; }).join('');
+  };
+  document.querySelectorAll('[data-pld]').forEach(b => b.onclick = () => { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); vista(); });
+  $('#plQ').onchange = () => { if (prefs[$('#plQ').value]) $('#plP').value = prefs[$('#plQ').value]; vista(); };
+  $('#plP').onchange = vista; vista();
 }
 function asignarPlan() {
   if (!D.plan.length) return toast('Todavía no hay planes. Créalos en la pestaña Planes.');

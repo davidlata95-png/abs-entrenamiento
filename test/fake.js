@@ -14,6 +14,7 @@ function makeSheet(name) {
       nr = nr || 1; nc = nc || 1;
       return {
         getValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => ((rows[a - 1 + i] || [])[c - 1 + j]) ?? '')),
+        getDisplayValues() { return this.getValues().map(r => r.map(String)); },
         getValue: () => ((rows[a - 1] || [])[c - 1]) ?? '',
         setValue: v => { while (rows.length < a) rows.push([]); rows[a - 1][c - 1] = v; },
         setValues: vals => vals.forEach((r, i) => { while (rows.length < a + i) rows.push([]); r.forEach((v, j) => rows[a - 1 + i][c - 1 + j] = v); }),
@@ -28,7 +29,7 @@ function load() {
   ['Registro', 'Comentarios', 'App'].forEach(n => ss.insertSheet(n));
   const ctx = {
     console,
-    SpreadsheetApp: { getActiveSpreadsheet: () => ss },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: () => { const P = global.__plani || []; return { getName: () => 'Plani prueba', getSheets: () => P.map(x => { const sh = makeSheet(x.name); x.rows.forEach(r => sh.appendRow(r)); sh.getName = () => x.name; return sh; }) }; } },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     UrlFetchApp: { fetch: (u, o) => { const r = (global.__strava || (() => ({ code: 404, body: '{}' })))(u, o || {}); return { getResponseCode: () => r.code, getContentText: () => r.body }; } },
     HtmlService: { XFrameOptionsMode: { ALLOWALL: 1 }, createHtmlOutput: h => ({ html: h, setTitle() { return this; }, setXFrameOptionsMode() { return this; } }) },
