@@ -380,7 +380,9 @@ function api_(q) {
     }
     if (q.op === 'guardar') {
       guardarDocs_(q.docs || []);
-      (q.docs || []).filter(x => x.tipo === 'mensaje' && x.doc && x.doc.de === 'coach' && !x.doc.avisado).forEach(x => push_([x.doc.dep], 'Tu entrenador te ha contestado', String(x.doc.txt || '').slice(0, 180)));
+      (q.docs || []).filter(x => x.tipo === 'mensaje' && x.doc && x.doc.de === 'coach' && !x.doc.avisado && x.doc.origen !== 'Train2Go').forEach(x => push_([x.doc.dep], 'Tu entrenador te ha contestado', String(x.doc.txt || '').slice(0, 180)));
+      // Comentarios nuevos que llegan de Train2Go: aviso al entrenador
+      (q.docs || []).filter(x => x.tipo === 'mensaje' && x.doc && x.doc.origen === 'Train2Go' && x.doc.de === 'dep').slice(0, 5).forEach(x => push_(['coach'], (x.doc.quien || 'Deportista') + ' en Train2Go', String(x.doc.txt || '').slice(0, 180)));
       return { ok: true };
     }
     // Avisos al móvil (OneSignal): App ID (público) y clave de la API REST (secreta, en las propiedades del script)

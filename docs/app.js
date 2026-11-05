@@ -1021,6 +1021,51 @@ async function importarPlani(k) {
   $('#plQ').onchange = () => { if (prefs[$('#plQ').value]) $('#plP').value = prefs[$('#plQ').value]; vista(); };
   $('#plP').onchange = vista; vista();
 }
+/* ---------- Train2Go → ABS ----------
+   Recibe lo que saca docs/t2g-extract.js de Train2Go (actividades con su % hecho y comentarios de los últimos días)
+   y lo guarda en ABS: sesiones «t2g-a<id>», deportistas «t2g-d<id>», mensajes «t2g-c<id>» y el % hecho en el registro.
+   Lo que ya estaba no se duplica. Lo lanza la tarea programada desde el Chrome del entrenador. */
+function t2gSync(p) {
+  if (S.auth?.modo !== 'coach') return { error: 'entra como entrenador' };
+  if (typeof p === 'string') p = JSON.parse(p);
+  if (p.error) return { error: p.error };
+  const docs = [], cuenta = { deportistas: 0, sesiones: 0, hechas: 0, comentarios: 0 };
+  const dSp = { natacion: 'Natación', carrera: 'Carrera', fuerza: 'Gimnasio', ciclismo: 'Ciclismo', otro: 'Sesión' };
+  (p.pupils || []).forEach(u => {
+    const depId = 't2g-d' + u.id; let d = byId('deportista', depId);
+    if (!d) { d = { id: depId, nombre: u.n || 'Deportista Train2Go', pin: '', deportes: [], grupos: [], notas: 'Viene de Train2Go.' }; docs.push({ tipo: 'deportista', doc: d }); D.deportista.push(d); cuenta.deportistas++; }
+    (u.days || []).forEach(day => {
+      const ids = [];
+      (day.acts || []).forEach(a => {
+        const sid = 't2g-a' + a.id; let s = byId('sesion', sid);
+        if (!s) {
+          s = { id: sid, dep: depId, fecha: day.f, titulo: a.tit || dSp[a.sp] || 'Sesión', deporte: DEP[a.sp] ? a.sp : 'otro', duracion: '', origen: 'Train2Go',
+            bloques: [{ nombre: 'Sesión', items: [{ nombre: a.tit || dSp[a.sp] || 'Sesión', texto: [a.med, a.desc].filter(Boolean).join('\n') }] }] };
+          docs.push({ tipo: 'sesion', doc: s }); D.sesion.push(s); cuenta.sesiones++;
+        }
+        ids.push(sid);
+        const r0 = byId('registro', sid);
+        if (a.pct > 0 && (!r0 || r0.t2g !== a.pct)) {
+          const r = { ...(r0 || { id: sid, ses: sid, dep: depId, fecha: s.fecha, sets: {}, coment: {} }), t2g: a.pct, hecho: { ...(r0?.hecho || {}) } };
+          (s.bloques || []).forEach((b, bi) => (b.items || []).forEach((it, ii) => { r.hecho[`${bi}|${ii}`] = true; }));
+          docs.push({ tipo: 'registro', doc: r }); cuenta.hechas++;
+        }
+      });
+      (day.com || []).forEach(c => {
+        const id = 't2g-c' + c.id; if (byId('mensaje', id)) return;
+        let ses = ids[0] || D.sesion.find(s => s.dep === depId && s.fecha === day.f)?.id;
+        if (!ses) { const s = { id: `t2g-dia-${u.id}-${day.f}`, dep: depId, fecha: day.f, titulo: 'Comentarios del día', deporte: 'otro', origen: 'Train2Go', bloques: [] }; if (!byId('sesion', s.id)) { docs.push({ tipo: 'sesion', doc: s }); D.sesion.push(s); } ses = s.id; }
+        const de = norm(c.a || '') === norm(d.nombre) || norm(c.a || '') === norm(u.n || '') ? 'dep' : 'coach';
+        const f = new Date(String(c.t).replace(' ', 'T'));
+        const m = { id, ses, dep: depId, de, txt: c.x, fecha: isNaN(f) ? new Date().toISOString() : f.toISOString(), origen: 'Train2Go', quien: de === 'dep' ? d.nombre : '' };
+        docs.push({ tipo: 'mensaje', doc: m }); D.mensaje.push(m); if (de === 'dep') cuenta.comentarios++; else marcarVisto([id]);
+      });
+    });
+  });
+  if (docs.length) { guardar(docs); try { renderCoach(); } catch (e) {} }
+  LS.set('abs2-t2g', { at: p.at || new Date().toISOString(), ...cuenta });
+  return cuenta;
+}
 function asignarPlan() {
   if (!D.plan.length) return toast('Todavía no hay planes. Créalos en la pestaña Planes.');
   abrirEd('Asignar plan', `<div class="card list">
@@ -1779,7 +1824,7 @@ function hilo(s, d, r) {
 }
 function hiloHTML(s, d, r, yo) {
   const l = hilo(s, d, r), nom = esc(String(d.nombre).split(' ')[0]);
-  return `<div class="hilo">${l.length ? l.map(m => `<div class="msg ${m.de === yo ? 'mio' : ''}"><small>${m.de === 'coach' ? 'Entrenador' : nom}${m.sobre ? ' · sobre ' + esc(m.sobre) : ''}${m.fecha ? ' · ' + new Date(m.fecha).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</small><p>${esc(m.txt)}</p></div>`).join('')
+  return `<div class="hilo">${l.length ? l.map(m => `<div class="msg ${m.de === yo ? 'mio' : ''}"><small>${m.de === 'coach' ? 'Entrenador' : nom}${m.sobre ? ' · sobre ' + esc(m.sobre) : ''}${m.origen ? ' · en ' + esc(m.origen) : ''}${m.fecha ? ' · ' + new Date(m.fecha).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</small><p>${esc(m.txt)}</p></div>`).join('')
       : `<p class="small muted" style="margin:0">${yo === 'coach' ? 'Todavía no ha escrito nada en esta sesión.' : '¿Alguna duda? Escribe aquí a tu entrenador.'}</p>`}
     <form class="msgf" data-msgf="${s.id}|${d.id}"><textarea class="com" rows="1" required placeholder="${yo === 'coach' ? 'Contestar a ' + nom + '…' : 'Escribe a tu entrenador…'}"></textarea><button class="btn sm pri">Enviar</button></form></div>`;
 }
@@ -1805,6 +1850,8 @@ function realizado(s, d) {
   return { tipo: 'strava', plan, acts, dist, mov, pct, ecos: plan && pct !== null ? Math.round(plan.ecos * Math.min(pct, 1.5)) : null };
 }
 function realizadoHTML(s, d) {
+  const rt = d && D.registro.find(r => r.ses === s.id && r.dep === d.id && r.t2g);
+  if (rt) return `<div class="pvh"><span>Hecho en Train2Go</span><b>${rt.t2g} %</b><i class="bar"><i style="width:${Math.min(100, rt.t2g)}%"></i></i></div>`;
   const x = realizado(s, d);
   if (x.tipo === 'series') return x.tot ? `<div class="pvh"><span>Series hechas</span><b>${x.ok} de ${x.tot}</b>${x.pct !== null ? `<i class="bar"><i style="width:${Math.round(x.pct * 100)}%"></i></i><b>${Math.round(x.pct * 100)} %</b>` : ''}</div>` : '';
   if (!x.plan) return '';
