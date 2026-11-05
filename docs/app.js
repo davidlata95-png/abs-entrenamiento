@@ -585,12 +585,13 @@ function vInicio(m) {
 function vDeportistas(m) {
   const deps = D.deportista.filter(d => !d.archivado).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const arch = D.deportista.filter(d => d.archivado);
-  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn pri" id="enA">🔗 Enlace para nuevos</button><label class="btn" style="cursor:pointer">Importar<input type="file" id="dimp" accept=".json,application/json" hidden></label><button class="btn" id="cfP">🔔 Avisos</button><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
+  m.innerHTML = `<div class="row"><h2 class="grow">Deportistas</h2><button class="btn pri" id="enA">🔗 Enlace para nuevos</button><label class="btn" style="cursor:pointer">Importar<input type="file" id="dimp" accept=".json,application/json" hidden></label><button class="btn" id="cfP">🔔 Avisos</button><button class="btn" id="t2gB" title="${esc(t2gUltima())}">🔄 Train2Go</button><button class="btn strava-b" id="cfS">${STRAVA_LOGO} Strava</button><button class="btn pri" id="nd">+ Nuevo deportista</button></div>
     ${deps.length ? `<div class="list">${deps.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b><small>${esc([...(d.grupos || []).map(g => byId('grupo', g)?.nombre), d.grupo, (d.deportes || []).map(x => DEP[x]?.n).join(' · ')].filter(Boolean).join(' · '))}</small></div><span class="chip mono">${d.pin ? 'PIN ' + esc(d.pin) : 'Sin PIN'}</span></button>`).join('')}</div>` : '<div class="empty">Aún no hay deportistas. Crea el primero para asignarle sesiones o un plan.</div>'}
     ${arch.length ? `<details><summary class="muted small">Archivados (${arch.length})</summary><div class="list" style="margin-top:8px">${arch.map(d => `<button class="item" data-d="${d.id}"><div class="avatar">${esc(ini(d.nombre))}</div><div class="t"><b>${esc(d.nombre)}</b></div></button>`).join('')}</div></details>` : ''}`;
   $('#nd').onclick = () => editDeportista();
   $('#cfS').onclick = () => configStrava();
   $('#cfP').onclick = () => configAvisos();
+  $('#t2gB').onclick = () => abrirT2G();
   $('#enA').onclick = () => enlaceAlta();
   $('#dimp').onchange = e => { const fi = e.target.files[0]; e.target.value = ''; if (fi) importarArchivo(fi); };
   m.querySelectorAll('[data-d]').forEach(b => b.onclick = () => editDeportista(byId('deportista', b.dataset.d)));
@@ -1066,6 +1067,16 @@ function t2gSync(p) {
   LS.set('abs2-t2g', { at: p.at || new Date().toISOString(), ...cuenta });
   return cuenta;
 }
+const t2gUltima = () => { const u = LS.get('abs2-t2g', null); return u ? `Última vez: ${new Date(u.at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${u.comentarios} comentarios nuevos · ${u.hechas} sesiones hechas` : 'Aún no se ha traído nada de Train2Go'; };
+// Abre Train2Go en otra pestaña; allí se ejecuta t2g-extract.js, que devuelve los datos a esta pestaña (postMessage)
+function abrirT2G() { const w = window.open('https://app.train2go.com/trainer/index', 'abs-t2g'); toast(w ? 'Abierto Train2Go: esperando sus datos…' : 'El navegador ha bloqueado la ventana de Train2Go'); return !!w; }
+addEventListener('message', e => {
+  if (e.origin !== 'https://app.train2go.com' || e.data?.tipo !== 'abs-t2g') return;
+  let r; try { r = t2gSync(e.data.data); } catch (x) { r = { error: x.message }; }
+  window.__t2gRes = r;
+  toast(r.error ? 'Train2Go: ' + r.error : `Train2Go: ${r.comentarios} comentarios nuevos · ${r.hechas} sesiones hechas · ${r.sesiones} sesiones nuevas`, 6000);
+  try { e.source.postMessage({ tipo: 'abs-t2g-ok', r }, e.origin); } catch (x) {}
+});
 function asignarPlan() {
   if (!D.plan.length) return toast('Todavía no hay planes. Créalos en la pestaña Planes.');
   abrirEd('Asignar plan', `<div class="card list">

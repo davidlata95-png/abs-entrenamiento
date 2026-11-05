@@ -43,5 +43,8 @@
     q.days.sort((a, b) => a.f < b.f ? -1 : 1);
     out.pupils.push(q);
   }
-  return JSON.stringify(out);
+  const res = JSON.stringify(out);
+  // Si esta pestaña la abrió ABS (botón «🔄 Train2Go»), se lo manda directamente
+  if (window.opener) { try { window.opener.postMessage({ tipo: 'abs-t2g', data: res }, 'https://davidlata95-png.github.io'); } catch (e) {} }
+  return window.opener ? JSON.stringify({ enviado: true, deportistas: out.pupils.length, dias: out.pupils.reduce((a, p) => a + p.days.length, 0) }) : res;
 })();
