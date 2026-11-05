@@ -376,30 +376,35 @@ async function pantallaAcceso(modo = 'dep') {
   const deps = L.deportistas || [], G = L.grupo;
   if (codigoAlta() && !S.verLista) return pantallaAlta(L);
   const pinIn = (id, extra = '') => `<input class="f mono" id="${id}" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required ${extra}>`;
-  box.innerHTML = `${G ? `<p class="small muted" style="margin:0">Grupo</p><h2 style="margin-top:0">${esc(G.nombre)}</h2>` : '<h2>¿Quién eres?</h2>'}
+  box.innerHTML = `${G ? `<p class="small muted" style="margin:0">Grupo</p><h2 style="margin-top:0">${esc(G.nombre)}</h2>` : '<h2>Entra</h2>'}
     ${L.grupoMal ? '<p class="small" style="color:var(--bad)">Ese enlace de grupo no existe. Pide el enlace nuevo a tu entrenador.</p>' : ''}
-    <form id="fd" class="list" ${deps.length ? '' : 'hidden'}><select class="f" id="dp" required><option value="">Elige tu nombre</option>${deps.map(d => `<option value="${esc(d.id)}" ${d.nuevo ? 'data-nuevo="1"' : ''}>${esc(d.nombre)}</option>`).join('')}</select>
-    <label class="l"><span id="pnL">PIN (4 cifras)</span>${pinIn('pn')}</label>
-    <label class="l hidden" id="pn2W">Repite el PIN${pinIn('pn2')}</label>
+    <form id="fd" class="list"><label class="l">Nombre y apellido<input class="f" id="dn" autocomplete="username" autocapitalize="words" required placeholder="Como te dio de alta tu entrenador"></label>
+    <label class="l"><span id="pnL">PIN (4 cifras)</span>${pinIn('pn', 'autocomplete="current-password"')}</label>
+    <label class="l hidden" id="pn2W">Es tu primera vez: repite el PIN para crearlo${pinIn('pn2')}</label>
     <button class="btn pri">Entrar</button><p id="err" class="small" style="color:var(--bad)"></p></form>
-    ${G ? `<button class="btn ${deps.length ? 'ghost' : 'pri'}" id="vu" type="button">${deps.length ? '¿No estás en la lista? Únete al grupo' : 'Únete al grupo'}</button>
+    ${G ? `<button class="btn ghost" id="vu" type="button">¿Es tu primera vez? Únete al grupo</button>
     <form id="fu" class="list hidden"><label class="l">Nombre y apellido<input class="f" id="un" autocomplete="name" required></label>
       <label class="l">Elige un PIN de 4 cifras (lo usarás para entrar)${pinIn('up')}</label>
       <label class="l">Repite el PIN${pinIn('up2')}</label>
       <label class="l">¿Cuál es tu objetivo? (opcional)<input class="f" id="uob" placeholder="p. ej. bajar de 1:05 en 100 libre, aprobar la oposición…"></label>
       <label class="l">¿Tienes alguna lesión o molestia? (opcional)<input class="f" id="ule" placeholder="Si no, déjalo vacío"></label>
       <div class="l">¿Qué días puedes entrenar? (opcional)<div class="chips">${DIAS.map((n, i) => `<button type="button" class="chip" data-udia="${i + 1}" aria-pressed="false">${n}</button>`).join('')}</div></div>
-      <button class="btn pri">Unirme y entrar</button><p id="erru" class="small" style="color:var(--bad)"></p></form>`
-      : deps.length ? '' : '<p class="muted small">Todavía no hay deportistas. Tu entrenador tiene que darte de alta o enviarte el enlace de tu grupo.</p>'}
+      <button class="btn pri">Unirme y entrar</button><p id="erru" class="small" style="color:var(--bad)"></p></form>` : ''}
     <button class="btn ghost sm" id="vc" type="button">Soy el entrenador →</button>`;
   $('#vc').onclick = () => pantallaAcceso('coach');
-  const nuevo = () => !!$('#dp').selectedOptions[0]?.dataset.nuevo;
-  $('#dp').onchange = () => { const n = nuevo(); $('#pnL').textContent = n ? 'Es tu primera vez: crea tu PIN (4 cifras)' : 'PIN (4 cifras)'; $('#pn2W').classList.toggle('hidden', !n); $('#pn2').required = n; };
   $('#pn2').required = false;
-  $('#fd').onsubmit = e => {
+  $('#fd').onsubmit = async e => {
     e.preventDefault();
-    if (nuevo() && $('#pn').value !== $('#pn2').value) return $('#err').textContent = 'Los dos PIN no coinciden.';
-    entrarDep($('#dp').value, $('#pn').value);
+    const nombre = $('#dn').value.trim(), pin = $('#pn').value, err = $('#err'), primera = !$('#pn2W').classList.contains('hidden');
+    if (!/^\d{4}$/.test(pin)) return err.textContent = 'El PIN tiene que tener 4 cifras.';
+    if (primera && pin !== $('#pn2').value) return err.textContent = 'Los dos PIN no coinciden.';
+    err.textContent = 'Entrando…';
+    try {
+      const j = await api({ a: 'entrar', nombre, pin, pin2: primera ? $('#pn2').value : '' });
+      if (j.ok) { err.textContent = ''; return entrarDep(j.id, pin); }
+      if (j.error === 'nuevo') { $('#pn2W').classList.remove('hidden'); $('#pn2').required = true; $('#pn2').focus(); return err.textContent = ''; }
+      err.textContent = ({ pin: 'Nombre o PIN incorrectos.', espera: 'Demasiados intentos. Espera 15 minutos o pide ayuda a tu entrenador.' })[j.error] || 'No se pudo entrar.';
+    } catch (x) { err.textContent = 'No hay conexión.'; }
   };
   if (G) {
     $('#vu').onclick = () => { $('#fu').classList.toggle('hidden'); $('#un').focus(); };
@@ -413,7 +418,7 @@ async function pantallaAcceso(modo = 'dep') {
       try {
         const ficha = { objetivo: $('#uob').value.trim(), lesion: $('#ule').value.trim(), dias: [...document.querySelectorAll('[data-udia][aria-pressed="true"]')].map(b => +b.dataset.udia) };
         const j = await api({ a: 'unirse', g: codigoG(), nombre, pin, ficha });
-        if (!j.ok) return err.textContent = ({ existe: 'Ya hay alguien con ese nombre. Elígelo en la lista de arriba y escribe tu PIN.', grupo: 'Ese grupo ya no existe.', nombre: 'Escribe tu nombre y apellido.', pin: 'El PIN tiene que tener 4 cifras.' })[j.error] || 'No se pudo completar.';
+        if (!j.ok) return err.textContent = ({ existe: 'Ya hay alguien con ese nombre. Entra arriba con tu nombre y tu PIN.', grupo: 'Ese grupo ya no existe.', nombre: 'Escribe tu nombre y apellido.', pin: 'El PIN tiene que tener 4 cifras.' })[j.error] || 'No se pudo completar.';
         S.lista = null; entrarDep(j.id, pin);
       } catch (x) { err.textContent = 'No hay conexión.'; }
     };
@@ -518,7 +523,7 @@ function avisosCoach() {
     ss.filter(s => s.fecha >= key(addDays(today(), -21)) && s.fecha <= key(addDays(today(), 1))).forEach(s => {
       const r = s.grupo ? D.registro.find(x => x.ses === s.id && x.dep === d.id) : byId('registro', s.id);
       const nuevos = hilo(s, d, r).filter(m => m.de === 'dep' && !v[m.k]);
-      if (nuevos.length) out.push({ k: 'msg', t: '💬', h: `<b>${nom}</b> ha escrito en «${esc(s.titulo || DEP[s.deporte]?.n)}» (${fmtD(parseKey(s.fecha))}): <i>${esc(nuevos.at(-1).txt.slice(0, 90))}</i>`, s: s.id, d: d.id });
+      if (nuevos.length) out.push({ k: 'msg|' + nuevos.map(m => m.k).join('§'), t: '💬', h: `<b>${nom}</b> ha escrito en «${esc(s.titulo || DEP[s.deporte]?.n)}» (${fmtD(parseKey(s.fecha))}): <i>${esc(nuevos.at(-1).txt.slice(0, 90))}</i>`, s: s.id, d: d.id });
     });
     const noHechas = ss.filter(s => s.fecha >= hace7 && s.fecha < hoy && !hechaPor(s, d));
     const kN = 'nh:' + d.id + ':' + noHechas.map(s => s.id).join(',');
@@ -558,7 +563,7 @@ function vInicio(m) {
   const entrenanHoy = filas.filter(x => x.deHoy.length);
   const color = p => p === null ? 'var(--faint)' : p >= 80 ? 'var(--ok)' : p >= 50 ? 'var(--s-carrera)' : 'var(--bad)';
   const avs = avisosCoach();
-  m.innerHTML = `${avisosBox()}${avs.length ? `<section class="card avisos"><div class="row"><h3 class="grow">Avisos <span class="small muted">· ${avs.length}</span></h3></div>${avs.map(a => `<div class="av"><span class="ico">${a.t}</span><button class="grow lnkb" ${a.s ? `data-avs="${a.s}|${a.d}"` : `data-avu="${a.u}" ${a.ficha ? 'data-avf="1"' : ''}`}>${a.h}</button>${a.k !== 'msg' ? `<button class="icon" data-avx="${esc(a.k)}" aria-label="Quitar aviso">✕</button>` : ''}</div>`).join('')}</section>` : ''}
+  m.innerHTML = `${avisosBox()}${avs.length ? `<section class="card avisos"><div class="row"><h3 class="grow">Avisos <span class="small muted">· ${avs.length}</span></h3></div>${avs.map(a => `<div class="av"><span class="ico">${a.t}</span><button class="grow lnkb" ${a.s ? `data-avs="${a.s}|${a.d}"` : `data-avu="${a.u}" ${a.ficha ? 'data-avf="1"' : ''}`}>${a.h}</button><button class="icon" data-avx="${esc(a.k)}" aria-label="Quitar aviso">✕</button></div>`).join('')}</section>` : ''}
     <div class="stepper"><button id="iwP" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lunD)} – ${fmtD(addDays(lunD, 6))}${estaSem ? ' · esta semana' : ''}</b><span>${hech} de ${tot} sesiones hechas${tot ? ` (${Math.round(hech / tot * 100)} %)` : ''}${estaSem ? ` · hoy entrenan ${entrenanHoy.length}` : ''}</span></div><button id="iwN" aria-label="Semana siguiente">›</button></div>
     ${!estaSem ? '<button class="btn sm ghost" id="iwh" style="align-self:center">Volver a esta semana</button>' : ''}
     ${filas.length ? `<div class="list">${filas.map(x => `<div class="card urow2">
@@ -571,7 +576,7 @@ function vInicio(m) {
       : '<div class="empty">No hay deportistas con sesiones esta semana.</div>'}
     <p class="small muted" style="margin:0">Una sesión cuenta como hecha si la ha registrado en la app (RPE, kilos o marcada) o si ese día tiene una actividad de Strava del mismo deporte. Toca un nombre para ir a su calendario y editar la semana, o una sesión para ver lo que hizo.</p>`;
   enlazarAvisos();
-  m.querySelectorAll('[data-avx]').forEach(b => b.onclick = () => { const o = LS.get('abs2-avisoOff', {}); o[b.dataset.avx] = 1; LS.set('abs2-avisoOff', o); vInicio(m); });
+  m.querySelectorAll('[data-avx]').forEach(b => b.onclick = () => { const k = b.dataset.avx; if (k.startsWith('msg|')) marcarVisto(k.slice(4).split('§')); else { const o = LS.get('abs2-avisoOff', {}); o[k] = 1; LS.set('abs2-avisoOff', o); } vInicio(m); });
   m.querySelectorAll('[data-avs]').forEach(b => b.onclick = () => { const [sid, did] = b.dataset.avs.split('|'); verSesion(byId('sesion', sid), did); });
   m.querySelectorAll('[data-avu]').forEach(b => b.onclick = () => { if (b.dataset.avf) return editDeportista(byId('deportista', b.dataset.avu)); S.ui.dep = b.dataset.avu; S.ui.semana = key(monday(today())); S.tab = 'cal'; marcoCoach(); });
   $("#iwP").onclick = () => { S.ui.semIni = key(addDays(lunD, -7)); vInicio(m); };

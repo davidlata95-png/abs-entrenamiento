@@ -240,9 +240,8 @@ function api_(q) {
       const g = grupoPorCodigo_(filas, q.g);
       if (g) { grupo = { id: g.id, nombre: g.nombre }; deps = deps.filter(d => (d.grupos || []).indexOf(g.id) >= 0); }
     }
-    deps = deps.map(d => ({ id: d.id, nombre: d.nombre, nuevo: !d.pin }));
-    deps.sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
-    return { ok: true, deportistas: deps, grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue(), pushApp: props_().getProperty('PUSH_APP') || '', altaOk: q.alta ? altaValida_(q.alta) : undefined };
+    // La lista de deportistas ya no se manda: cada uno entra escribiendo su nombre y su PIN (op «entrar»)
+    return { ok: true, deportistas: [], grupo, grupoMal: !!q.g && !grupo, entrenador: !!hConfig_().getRange('B1').getValue(), pushApp: props_().getProperty('PUSH_APP') || '', altaOk: q.alta ? altaValida_(q.alta) : undefined };
   }
   // Alta individual con el enlace personal del entrenador (…/?alta=CÓDIGO): la persona crea su perfil y su PIN
   if (a === 'alta') {
@@ -261,6 +260,25 @@ function api_(q) {
     guardarDocs_([{ tipo: 'deportista', doc: d }]);
     push_(['coach'], 'Nuevo deportista', nombre + ' ha creado su perfil. Asígnale su plan.');
     return { ok: true, id: d.id };
+  }
+  // Entrar con nombre y apellido + PIN. Si el perfil aún no tiene PIN (lo creó el entrenador), se crea al repetirlo.
+  if (a === 'entrar') {
+    const nombre = normN_(q.nombre || '');
+    if (!nombre || !pinOk_(q.pin)) return { ok: false, error: 'pin' };
+    const cache = typeof CacheService !== 'undefined' ? CacheService.getScriptCache() : null, ck = 'entrar_' + nombre.replace(/[^a-z0-9]/g, '').slice(0, 200);
+    const fallos = cache ? +(cache.get(ck) || 0) : 0;
+    if (fallos >= 8) return { ok: false, error: 'espera' };
+    const igual = docs_(leerDatos_(), 'deportista').filter(d => !d.archivado && normN_(d.nombre) === nombre);
+    const yo = igual.find(d => d.pin && String(d.pin) === String(q.pin));
+    if (yo) { if (cache) cache.remove(ck); return { ok: true, id: yo.id }; }
+    const sin = igual.filter(d => !d.pin);
+    if (sin.length === 1 && igual.length === 1) {
+      if (String(q.pin2 || '') !== String(q.pin)) return { ok: false, error: 'nuevo' };
+      sin[0].pin = String(q.pin); guardarDocs_([{ tipo: 'deportista', doc: sin[0] }]);
+      return { ok: true, id: sin[0].id };
+    }
+    if (cache) cache.put(ck, String(fallos + 1), 900);
+    return { ok: false, error: 'pin' };
   }
   if (a === 'unirse') {
     const filas = leerDatos_();
@@ -288,7 +306,7 @@ function api_(q) {
     return { ok: true, id: d.id };
   }
   if (a === 'login' || a === 'registro') {
-    const dep = deportista_(q.id, q.pin, a === 'login');
+    const dep = deportista_(q.id, q.pin, false); // el primer PIN se crea con «entrar» (hace falta saber el nombre)
     if (!dep) return { ok: false, error: 'pin' };
     const filas = leerDatos_();
     const refs = {}; refs[dep.id] = 1; (dep.grupos || []).forEach(g => refs['g:' + g] = 1);
