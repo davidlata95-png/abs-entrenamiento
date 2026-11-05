@@ -97,7 +97,7 @@ function txtHTML(texto, dep) {
   if (dep !== 'natacion') return `<pre class="txt">${esc(texto)}</pre>`;
   const pintar = (seg, z) => {
     if (!z) return esc(seg);
-    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => `${a ?? c ?? ''}<b class="zp" data-z="${z}">${b ? znDe('natacion', ZNAT_K[b.toLowerCase()]) : d}</b>`);
+    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => `${a ?? c ?? ''}<b class="zp" data-z="${b ? ZNAT_K[b.toLowerCase()] : zonaNat(' ' + d) || z}">${b ? znDe('natacion', ZNAT_K[b.toLowerCase()]) : d}</b>`);
     return `<span class="zt" data-z="${z}">${marcado}</span>`;
   };
   const lineas = String(texto || '').split('\n').map(l => {
