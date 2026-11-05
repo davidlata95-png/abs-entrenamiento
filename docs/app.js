@@ -80,6 +80,36 @@ const RPE_TXT = ['Reposo', 'Muy, muy fácil', 'Fácil', 'Moderado', 'Algo duro',
    (o el de Train2Go por defecto: 1:37/100 m y 4:19/km). El descanso cuenta como tiempo en su zona (R0 si no se dice otra). */
 const ZONAS = [['r0', 'R0'], ['r1', 'R1'], ['r1p', 'R1+'], ['r2', 'R2'], ['r3', 'R3'], ['r3p', 'R3+'], ['r4', 'R4'], ['r5', 'R5'], ['r6', 'R6']];
 const ZN = Object.fromEntries(ZONAS);
+/* Intensidades de natación (las del entrenador) con los colores de la tabla de Rushall, en el mismo orden:
+   Suave = Clear · A1 = White · A2 = Pink · A3 = Red · PAE = Orange · R400 = Blue · R200 = Purple · R100 = Green · Fuerte = Gold.
+   Por dentro son las mismas 9 zonas (r0…r6) que usan los ECOs. */
+const ZONAS_NAT = [['r0', 'Suave'], ['r1', 'A1'], ['r1p', 'A2'], ['r2', 'A3'], ['r3', 'PAE'], ['r3p', 'R400'], ['r4', 'R200'], ['r5', 'R100'], ['r6', 'Fuerte']];
+const ZNAT_K = { suave: 'r0', a1: 'r1', a2: 'r1p', a3: 'r2', pae: 'r3', r400: 'r3p', r200: 'r4', r100: 'r5', fuerte: 'r6' };
+const ZNAT_DESC = { r0: 'Recuperación', r1: 'Aeróbico suave', r1p: 'Aeróbico medio', r2: 'Aeróbico fuerte', r3: 'Potencia aeróbica', r3p: 'Ritmo de 400', r4: 'Ritmo de 200', r5: 'Ritmo de 100', r6: 'Máxima velocidad' };
+const zonasDe = dep => dep === 'natacion' ? ZONAS_NAT : ZONAS;
+const znDe = (dep, z) => (dep === 'natacion' ? Object.fromEntries(ZONAS_NAT) : ZN)[z];
+// Busca en un trozo de texto la intensidad de natación (también acepta R0…R6 de Train2Go)
+const ZNAT_RE = /(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])/i;
+const ZR_RE = /(^|[^a-z0-9])R\s?([0-6])(\s?\+|p\b)?(?!\d)/i;
+function zonaNat(t) { let m = t.match(ZNAT_RE); if (m) return ZNAT_K[m[2].toLowerCase()]; m = t.match(ZR_RE); return m ? 'r' + m[2] + (m[3] ? 'p' : '') : ''; }
+// Pinta un entreno de natación escrito tal cual (sangrías y líneas en blanco incluidas), con cada intensidad en su color
+function txtHTML(texto, dep) {
+  if (dep !== 'natacion') return `<pre class="txt">${esc(texto)}</pre>`;
+  const pintar = (seg, z) => {
+    if (!z) return esc(seg);
+    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => `${a ?? c ?? ''}<b class="zp" data-z="${z}">${b || d}</b>`);
+    return `<span class="zt" data-z="${z}">${marcado}</span>`;
+  };
+  const lineas = String(texto || '').split('\n').map(l => {
+    const sang = l.match(/^\s*/)[0], cont = l.slice(sang.length);
+    if (!cont) return '';
+    const segs = cont.split(/(\s*\+\s*)/), zs = segs.map((x, i) => i % 2 ? '' : zonaNat(x)), unicas = [...new Set(zs.filter(Boolean))];
+    const comun = unicas.length === 1 ? unicas[0] : '';
+    return esc(sang) + segs.map((x, i) => i % 2 ? esc(x) : pintar(x, zs[i] || comun)).join('');
+  });
+  return `<pre class="txt nat">${lineas.join('\n')}</pre>`;
+}
+const leyendaNat = () => `<details class="zley"><summary>Intensidades</summary><div>${ZONAS_NAT.map(([k, n]) => `<span><b class="zp" data-z="${k}">${n}</b> ${ZNAT_DESC[k]}</span>`).join('')}</div></details>`;
 const ZCOEF = { r0: 1, r1: 2, r1p: 2, r2: 3, r3: 5, r3p: 9, r4: 15, r5: 40, r6: 50 };
 const ZVEL = { r0: .41667, r1: .45, r1p: .48333, r2: .53333, r3: .61667, r3p: .66667, r4: .74667, r5: .86667, r6: 1 };
 const ECO_DEP = { natacion: { f: .75, por: 100, r3: '1:37', u: '/100 m' }, carrera: { f: 1, por: 1000, r3: '4:19', u: '/km' } };
@@ -121,14 +151,16 @@ function calcSesion(s) {
 }
 const ecoDe = s => calcSesion(s) || s.eco || null;
 const ecoTxt = e => e ? `${e.metros ? fmtDist(e.metros) + ' · ' : ''}${e.ecos} ECOs` : '';
-const txtFila = f => `${+f.rep > 1 ? f.rep + ' × ' : ''}${f.m1}${{ m: ' m', km: ' km', min: "'", seg: '"', h: ' h' }[f.u1] || ''} ${ZN[f.z1 || 'r1']}${+f.m2 ? ` · d/${f.m2}${{ m: ' m', km: ' km', min: "'", seg: '"' }[f.u2 || 'seg']}${f.z2 && f.z2 !== 'r0' ? ' ' + ZN[f.z2] : ''}` : ''}`;
+const txtFila = (f, dep) => `${+f.rep > 1 ? f.rep + ' × ' : ''}${f.m1}${{ m: ' m', km: ' km', min: "'", seg: '"', h: ' h' }[f.u1] || ''} ${znDe(dep, f.z1 || 'r1')}${+f.m2 ? ` · d/${f.m2}${{ m: ' m', km: ' km', min: "'", seg: '"' }[f.u2 || 'seg']}${f.z2 && f.z2 !== 'r0' ? ' ' + znDe(dep, f.z2) : ''}` : ''}`;
 
 /* Lee la forma de escribir de Train2Go ("8x50 d/10\" R2", "3x(700 R1+ d/30\" + 4x25 R3+ d/15\")", "10' R0-R1",
    "2,5k R2 @4'35\"", "9x200:" con líneas "3 R1+ @4'20\" c/4'35\"") y la pasa a filas.
    Es una ayuda para no teclear: las filas se revisan y se corrigen a mano. */
 function leerT2G(txt, dep, r3s) {
   const filas = [], ZRE = /(?:^|[^a-záéíóúñ])R\s?([0-6])(\s?\+|p\b)?/i, por = ECO_DEP[dep].por;
-  const zona = t => { const m = t.match(ZRE); return m ? 'r' + m[1] + (m[2] ? 'p' : '') : ''; };
+  const nat = dep === 'natacion';
+  const zona = t => { if (nat) return zonaNat(t); const m = t.match(ZRE); return m ? 'r' + m[1] + (m[2] ? 'p' : '') : ''; };
+  const hayZ = t => nat ? !!zonaNat(t) : ZRE.test(t);
   const suave = t => /(^|\s)(su|suave|f[aá]cil|soltar|trote|var|cal|calentar|relax|recuperaci[oó]n|rec|descanso|parado|pausa)(\s|$|[.,:])/i.test(t);
   const medida = t => {
     t = t.trim(); let m;
@@ -166,16 +198,16 @@ function leerT2G(txt, dep, r3s) {
     const linea = l.trim().replace(/^[-–•·*]\s*/, '');
     if (!linea) { multBloque = 1; base = null; return; }
     if (/^\d+\s*[º°ª]/.test(linea) || /^\d+\s*[.)]\s/.test(linea)) return; // detalle de cada repetición ("1º: 50 puños…")
-    let m = linea.match(/^(\d+)\s*(?:veces|bloques|rondas|series)\b[^:]*:?\s*$/i) || linea.match(/^(\d+)\s*[x×]\s*:?\s*$/i);
+    let m = linea.match(/^(\d+)\s*(?:veces|bloques|rondas|series)\b[^:]*:?\s*$/i) || linea.match(/^(\d+)\s*[x×]\s*(?:\[[^\]\d]*\]|[a-záéíóúñ][a-záéíóúñ ]*)?\s*:?\s*$/i);
     const vz = linea.match(/\(\s*(\d+)\s*veces\s*\)/i); // "15': 30\" prog + 2'30\" R0 (5 veces)"
     if (vz && !m) { partes(linea.replace(vz[0], '').replace(/^[^:]{1,12}:\s*/, ''), +vz[1] * multBloque); return; }
     if (m) { multBloque = +m[1]; base = null; return; }
     if ((m = linea.match(/^(\d+)\s*[x×]\s*(\d+)\s*:\s*$/i))) { base = { m1: +m[2], u1: 'm', n: +m[1] }; return; } // "9x200:" y debajo "3 R1+ …"
     if ((m = linea.match(/^(\d+)\s*[x×]\s*\((.*)\)/i))) { partes(m[2], +m[1] * multBloque); return; }
-    if ((m = linea.match(/^(\d+)\s*[x×]\s*[^:]*:\s*(.+)$/i)) && ZRE.test(m[2])) { partes(m[2], +m[1] * multBloque); return; } // "2x6': 2' R1 + 2' R2…"
-    if ((m = linea.match(/^([^:]{1,24}):\s*(.+)$/))) { // "400: 75 cr + 25 otro estilo" o "15': 10' R0 + 5' R1"
-      if (ZRE.test(m[2]) && /^\s*(\d+\s*[x×]\s*)?\d/.test(m[2])) { partes(m[2], multBloque); return; }
-      if (medida(m[1].replace(/^\d+\s*[x×]\s*/i, '')) || /^\d+\s*[x×]/.test(m[1])) { parte(m[1] + ' ' + (zona(linea) ? 'R' + zona(linea).slice(1).replace('p', '+') : m[2]), multBloque); return; }
+    if ((m = linea.match(/^(\d+)\s*[x×]\s*([^:]*):\s*(.+)$/i)) && !/(@|[cd]\s*\/)\s*\d*$/i.test(m[2]) && hayZ(m[3]) && (m[2] = m[3])) { partes(m[2], +m[1] * multBloque); return; } // "2x6': 2' R1 + 2' R2…"
+    if ((m = linea.match(/^([^:]{1,24}):\s*(.+)$/)) && !/(@|[cd]\s*\/)\s*\d*$/i.test(m[1])) { // no si los «:» son de una hora («@ 1:40») // "400: 75 cr + 25 otro estilo" o "15': 10' R0 + 5' R1"
+      if (hayZ(m[2]) && /^\s*(\d+\s*[x×]\s*)?\d/.test(m[2])) { partes(m[2], multBloque); return; }
+      if (medida(m[1].replace(/^\d+\s*[x×]\s*/i, '')) || /^\d+\s*[x×]/.test(m[1])) { parte(m[1] + ' ' + (zona(linea) ? znDe(dep, zona(linea)) : m[2]), multBloque); return; }
     }
     if (base && /^\d+\s/.test(linea) && !medida(linea.replace(/^\d+\s+/, ''))) { parte(linea, multBloque, base); return; }
     partes(linea, multBloque);
@@ -725,7 +757,7 @@ function vCalendario(m) {
   const fin = addDays(lun, 6), deSemana = ses.filter(s => s.fecha >= key(lun) && s.fecha <= key(fin));
   const ecoSem = deSemana.reduce((a, s) => a + (conEcos(s.deporte) ? ecoDe(s)?.ecos || 0 : 0), 0);
   const resumen = (ecoSem ? `${ecoSem} ECOs previstos · ` : '') + (Q.grupo ? `${miembros(Q.grupo).length} personas · ${deSemana.length} ${deSemana.length === 1 ? 'sesión' : 'sesiones'}` : `Carga registrada: ${deSemana.reduce((a, s) => a + ua(byId('registro', s.id)), 0)} UA`);
-  m.innerHTML = `<div class="row calbar">${selDep('cd')}<div class="row grow" style="justify-content:flex-end">${Q.grupo ? '<button class="btn sm" id="ce">Copiar enlace</button>' : ''}<button class="btn sm" id="ap">Asignar plan</button><button class="btn sm" id="cs">Copiar semana a…</button><button class="btn sm ${S.ui.selOn ? 'pri' : ''}" id="selB">${S.ui.selOn ? 'Terminar selección' : 'Seleccionar'}</button></div></div>
+  m.innerHTML = `<div class="row calbar">${selDep('cd')}<div class="row grow" style="justify-content:flex-end">${Q.grupo ? '<button class="btn sm" id="ce">Copiar enlace</button>' : ''}<button class="btn sm" id="inat">🏊 Importar natación</button><button class="btn sm" id="ap">Asignar plan</button><button class="btn sm" id="cs">Copiar semana a…</button><button class="btn sm ${S.ui.selOn ? 'pri' : ''}" id="selB">${S.ui.selOn ? 'Terminar selección' : 'Seleccionar'}</button></div></div>
     ${fichaAviso(Q)}
     ${barraTemporada(lun, ses, objetivosDe(Q))}
     <div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(fin)}</b><span>${resumen}</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
@@ -739,6 +771,7 @@ function vCalendario(m) {
   $('#pw').onclick = () => { S.ui.semana = key(addDays(lun, -7)); renderCoach(); };
   $('#nw').onclick = () => { S.ui.semana = key(addDays(lun, 7)); renderCoach(); };
   $('#ap').onclick = () => asignarPlan();
+  $('#inat').onclick = () => importarNatacion(Q.k);
   $('#cs').onclick = () => copiarSemana(lun, Q);
   const ce = $('#ce'); if (ce) ce.onclick = () => copiarEnlace(Q.grupo);
   m.querySelectorAll('[data-add]').forEach(b => b.onclick = () => nuevaSesion(b.dataset.add));
@@ -842,6 +875,73 @@ function nuevaSesion(fecha) {
       setTimeout(() => editSesion(s, true), 0);
     }, 'Continuar');
   document.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => document.querySelectorAll('[data-nd]').forEach(x => x.setAttribute('aria-pressed', x === b)));
+}
+/* ---------- Importar entrenos de natación escritos ----------
+   Se pega el texto (uno o varios días). Cada día empieza con una línea de fecha: «Lunes 9/11», «9/11», «09-11-2026»
+   o «2026-11-09»; lo que va detrás de la fecha es el título. Si no hay ninguna fecha, todo va al día elegido. */
+const DIA_RE = /^\s*((?:lun|mar|mi[eé]|jue|vie|s[aá]b|dom)[a-záéíóú]*\.?,?\s+)?(\d{1,2})\s*([\/.-])\s*(\d{1,2})(?:\s*[\/.-]\s*(\d{2,4}))?\s*(?:[:·–—-]\s*)?(.*)$/i;
+const ISO_RE = /^\s*(\d{4})-(\d{2})-(\d{2})\s*(?:[:·–—-]\s*)?(.*)$/;
+function fechaDe(linea) {
+  let m = linea.match(ISO_RE), y, mo, d, resto;
+  if (m) [, y, mo, d, resto] = m.map((x, i) => i && i < 4 ? +x : x);
+  else if ((m = linea.match(DIA_RE)) && !/^\s*\d+\s*[x×]/i.test(linea)) {
+    d = +m[2]; mo = +m[4]; resto = m[6];
+    if (!m[1] && !m[5] && m[3] !== '/') return null; // «1-2 suave» no es una fecha
+    if (/^\s*\d/.test(resto || '')) return null; // «1/2 50 …» tampoco
+    y = m[5] ? (+m[5] < 100 ? 2000 + +m[5] : +m[5]) : null;
+    if (!y) { const h = today(); y = h.getFullYear(); if (mo < h.getMonth() + 1 - 6) y++; else if (mo > h.getMonth() + 1 + 6) y--; }
+  } else return null;
+  const f = new Date(y, mo - 1, d);
+  if (f.getMonth() !== mo - 1 || f.getDate() !== d) return null;
+  return { fecha: key(f), titulo: String(resto || '').trim() };
+}
+function partirNatacion(txt, fechaPorDefecto) {
+  const dias = []; let cur = null;
+  String(txt || '').replace(/\r/g, '').split('\n').forEach(l => {
+    const f = l.trim() && l.trim().length <= 60 ? fechaDe(l) : null;
+    if (f) { cur = { ...f, lineas: [] }; dias.push(cur); return; }
+    if (!cur) { if (!l.trim()) return; cur = { fecha: fechaPorDefecto, titulo: '', lineas: [] }; dias.push(cur); }
+    cur.lineas.push(l.replace(/\t/g, '    '));
+  });
+  return dias.map(d => {
+    while (d.lineas.length && !d.lineas[0].trim()) d.lineas.shift();
+    while (d.lineas.length && !d.lineas.at(-1).trim()) d.lineas.pop();
+    const sang = Math.min(...d.lineas.filter(x => x.trim()).map(x => x.match(/^ */)[0].length), 99);
+    return { ...d, texto: d.lineas.map(x => x.slice(Math.min(sang, x.match(/^ */)[0].length))).join('\n') };
+  }).filter(d => d.texto.trim());
+}
+function importarNatacion(k) {
+  const ds = [...gruposOrd().map(g => ['g:' + g.id, 'Grupo · ' + g.nombre]), ...depsOrd().map(d => [d.id, d.nombre])];
+  abrirEd('Importar natación', `<div class="card list">
+    <label class="l">Para<select class="f" id="inQ">${opts(ds, k)}</select><small class="muted">Si es un grupo, lo ve cada persona del grupo en Hoy y en Programa. Para un grupo nuevo, créalo antes en Grupos.</small></label>
+    <label class="l">Entrenos (pega uno o varios días)<textarea class="f mono" id="inT" rows="14" placeholder="Lunes 9/11 · Aeróbico\n300 Suave\n6x50 @ :50 A1\n\n6x [Patada]\n    100 @ 1:40 A1\n    3x25 @ :30 R100\n\nMartes 10/11\n…"></textarea>
+    <small class="muted">Cada día empieza con su fecha en una línea (Lunes 9/11, 9/11 o 2026-11-09); lo que pongas detrás es el título. Se respetan las líneas en blanco y las sangrías. Intensidades: Suave, A1, A2, A3, PAE, R400, R200, R100, Fuerte.</small></label>
+    <label class="l">Día si el texto no lleva fecha<input class="f" type="date" id="inF" value="${key(today())}" style="max-width:200px"></label>
+    <label class="row small"><input type="checkbox" id="inR"> Sustituir la sesión de natación que ya haya ese día</label>
+    ${leyendaNat()}
+    <div id="inP"></div></div>`, () => {
+    const Q = quien($('#inQ').value), dias = partirNatacion($('#inT').value, $('#inF').value);
+    if (!dias.length) return toast('Pega al menos un entreno'), false;
+    const ya = D.sesion.filter(s => Q.filtro(s) && s.deporte === 'natacion'), docs = [], fuera = [];
+    dias.forEach(d => {
+      const s = { id: uid(), ...Q.asig, fecha: d.fecha, titulo: d.titulo || 'Natación', deporte: 'natacion', duracion: '', origen: 'Importado (texto)', bloques: [{ nombre: d.titulo || 'Entrenamiento', items: [{ nombre: '', texto: d.texto }] }] };
+      const fs = leerT2G(d.texto, 'natacion', ritmoR3(s, 'natacion')).filter(f => +f.m1); if (fs.length) s.bloques[0].items[0].filas = fs;
+      if ($('#inR').checked) ya.filter(x => x.fecha === d.fecha).forEach(x => fuera.push({ tipo: 'sesion', id: x.id }));
+      docs.push({ tipo: 'sesion', doc: s });
+    });
+    if (fuera.length) borrar(fuera);
+    guardar(docs); S.ui.dep = Q.k; S.ui.semana = key(monday(parseKey(dias[0].fecha))); renderCoach();
+    toast(`${docs.length} ${docs.length === 1 ? 'sesión importada' : 'sesiones importadas'} para ${Q.nombre}`);
+  }, 'Importar');
+  const prev = () => {
+    const Q = quien($('#inQ').value), dias = partirNatacion($('#inT').value, $('#inF').value);
+    $('#inP').innerHTML = dias.length ? `<h3 style="margin:12px 0 6px">Así lo verán (${dias.length} ${dias.length === 1 ? 'día' : 'días'})</h3>` + dias.map(d => {
+      const s = { ...Q.asig, deporte: 'natacion', bloques: [{ items: [{ filas: leerT2G(d.texto, 'natacion', ritmoR3(Q.asig.grupo ? { grupo: Q.asig.grupo } : { dep: Q.asig.dep }, 'natacion')).filter(f => +f.m1) }] }] }, e = calcSesion(s);
+      const hay = D.sesion.some(x => Q.filtro(x) && x.deporte === 'natacion' && x.fecha === d.fecha);
+      return `<div class="card list" style="margin-top:8px"><p class="small" style="margin:0"><b>${fmtLong(parseKey(d.fecha))}</b>${d.titulo ? ' · ' + esc(d.titulo) : ''}${e ? ' · ' + ecoTxt(e) + ' (aprox.)' : ''}${hay ? ' · <span class="warn">ya hay natación ese día</span>' : ''}</p>${txtHTML(d.texto, 'natacion')}</div>`;
+    }).join('') : '';
+  };
+  ['#inQ', '#inT', '#inF'].forEach(id => $(id).addEventListener('input', prev));
 }
 function asignarPlan() {
   if (!D.plan.length) return toast('Todavía no hay planes. Créalos en la pestaña Planes.');
@@ -1038,8 +1138,8 @@ function verSesion(s, quienId) {
       ${(b.items || []).map((it, ii) => {
         const v = vidId(it.video), com = r.coment?.[`${bi}|${ii}`], px = presc(it, b);
         let body = '';
-        if (it.texto) body += `<pre class="txt">${esc(it.texto)}</pre>`;
-        else if (it.filas?.length) body += `<ul class="filas">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f))}</li>`).join('')}</ul>`;
+        if (it.texto) body += txtHTML(it.texto, s.deporte);
+        else if (it.filas?.length) body += `<ul class="filas ${s.deporte === 'natacion' ? 'nat' : ''}">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f, s.deporte))}</li>`).join('')}</ul>`;
         if (s.deporte === 'fuerza') { const n = nSeries(b, it); body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td class="kg mono">${x.kg ? esc(x.kg) + ' kg' : '<span class="muted">—</span>'}</td><td class="c">${x.ok ? `<span class="chk" aria-pressed="true" aria-label="Hecha">${CHECK}</span>` : ''}</td></tr>`; }).join('')}</tbody></table>`; }
         if (com) body += `<p class="bubble">${esc(com)}</p>`;
         return `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${esc(it.nombre || '')}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
@@ -1100,10 +1200,10 @@ function filasEd(dep, bi, ii, it, r3s) {
   const fs = it.filas || [], id = `${bi}|${ii}`;
   const fila = (f, fi) => { const k = `${id}|${fi}`, c = calcFila(f, dep, r3s); return `<tr class="${f.sup ? 'sup' : ''}">
     <td><input class="rep" data-fr="${k}" data-fk="rep" value="${esc(f.rep || 1)}" inputmode="numeric" aria-label="Repeticiones"></td><td class="x">×</td>
-    <td><div class="mz"><input data-fr="${k}" data-fk="m1" value="${esc(f.m1 ?? '')}" inputmode="decimal" aria-label="Medida"><select data-fr="${k}" data-fk="u1" aria-label="Unidad">${opts(UNID, f.u1 || 'm')}</select><select class="z" data-fr="${k}" data-fk="z1" data-z="${f.z1 || 'r1'}" aria-label="Zona">${opts(ZONAS, f.z1 || 'r1')}</select></div></td>
-    <td><div class="mz"><input data-fr="${k}" data-fk="m2" value="${esc(f.m2 ?? '')}" inputmode="decimal" placeholder="—" aria-label="Descanso"><select data-fr="${k}" data-fk="u2" aria-label="Unidad del descanso">${opts(UNID, f.u2 || 'seg')}</select><select class="z" data-fr="${k}" data-fk="z2" data-z="${f.z2 || 'r0'}" aria-label="Zona del descanso">${opts(ZONAS, f.z2 || 'r0')}</select></div></td>
+    <td><div class="mz"><input data-fr="${k}" data-fk="m1" value="${esc(f.m1 ?? '')}" inputmode="decimal" aria-label="Medida"><select data-fr="${k}" data-fk="u1" aria-label="Unidad">${opts(UNID, f.u1 || 'm')}</select><select class="z" data-fr="${k}" data-fk="z1" data-z="${f.z1 || 'r1'}" aria-label="Zona">${opts(zonasDe(dep), f.z1 || 'r1')}</select></div></td>
+    <td><div class="mz"><input data-fr="${k}" data-fk="m2" value="${esc(f.m2 ?? '')}" inputmode="decimal" placeholder="—" aria-label="Descanso"><select data-fr="${k}" data-fk="u2" aria-label="Unidad del descanso">${opts(UNID, f.u2 || 'seg')}</select><select class="z" data-fr="${k}" data-fk="z2" data-z="${f.z2 || 'r0'}" aria-label="Zona del descanso">${opts(zonasDe(dep), f.z2 || 'r0')}</select></div></td>
     <td class="eco mono" data-fe="${k}">${+f.m1 ? Math.round(c.ecos) : ''}</td><td><button type="button" class="icon" data-fd="${k}" aria-label="Quitar fila">✕</button></td></tr>`; };
-  return `<div class="t2g"><table><thead><tr><th>Rep</th><th></th><th>Actividad · zona</th><th>Descanso · zona</th><th>ECOs</th><th></th></tr></thead><tbody>${fs.map(fila).join('')}</tbody></table>
+  return `<div class="t2g ${dep === 'natacion' ? 'nat' : ''}"><table><thead><tr><th>Rep</th><th></th><th>Actividad · zona</th><th>Descanso · zona</th><th>ECOs</th><th></th></tr></thead><tbody>${fs.map(fila).join('')}</tbody></table>
     ${fs.some(f => f.sup) ? '<p class="small muted" style="margin:4px 0 0">Las filas marcadas no decían zona: se ha supuesto. Revísalas.</p>' : ''}
     <div class="row"><button type="button" class="btn sm" data-fa="${id}">+ Fila</button><button type="button" class="btn sm ghost" data-ft="${id}">Rellenar filas desde el texto</button><span class="grow"></span><span class="tot mono" data-ftot="${id}"></span></div></div>`;
 }
@@ -1112,8 +1212,8 @@ function itemEd(dep, bi, ii, it, r3s) {
   const conTexto = dep !== 'fuerza', eco = conEcos(dep);
   return `<div class="eitem"><div class="top"><label class="grow">Ejercicio / tarea<input data-i="${id}" data-ik="nombre" value="${esc(it.nombre)}" placeholder="${conTexto ? 'p. ej. Calentamiento, 6x100 progresivo' : 'Nombre del ejercicio'}"></label>
     <button class="icon" data-mi="${bi}|${ii}|-1" aria-label="Subir">↑</button><button class="icon" data-mi="${bi}|${ii}|1" aria-label="Bajar">↓</button><button class="icon" data-di="${id}" aria-label="Quitar">✕</button></div>
-    ${conTexto ? `<label>${eco ? 'Entreno escrito como en Train2Go (p. ej. 8x50 R2 d/15")' : 'Descripción (texto tal cual lo verá el deportista)'}<textarea data-i="${id}" data-ik="texto" ${eco ? 'class="mono"' : ''}>${esc(it.texto || '')}</textarea></label>` : ''}
-    ${eco ? filasEd(dep, bi, ii, it, r3s) : ''}
+    ${conTexto ? `<label>${dep === 'natacion' ? 'Entreno escrito tal cual (p. ej. «6x50 @ :50 A1» o «200 A2 + 100 A3»; respeta sangrías)' : eco ? 'Entreno escrito como en Train2Go (p. ej. 8x50 R2 d/15")' : 'Descripción (texto tal cual lo verá el deportista)'}<textarea data-i="${id}" data-ik="texto" ${eco ? 'class="mono"' : ''}>${esc(it.texto || '')}</textarea></label>` : ''}
+    ${dep === 'natacion' ? leyendaNat() : ''}${eco ? filasEd(dep, bi, ii, it, r3s) : ''}
     <div class="fields">${eco ? '' : (CAMPOS[dep] || CAMPOS.otro).map(([k, n]) => `<label>${n}<input data-i="${id}" data-ik="${k}" value="${esc(it[k] || '')}"></label>`).join('')}
     <label>Vídeo (enlace)<input data-i="${id}" data-ik="video" value="${esc(it.video || '')}" placeholder="YouTube"></label></div>
     <label>Indicación<input data-i="${id}" data-ik="notas" value="${esc(it.notas || '')}"></label></div>`;
@@ -1448,7 +1548,7 @@ function pintarResultadoIA(el, p) {
     <h3 style="margin:6px 0 0">Semana 1</h3>
     ${sem1.map(s => `<details><summary><b>${DIAS[s.dia - 1]} · ${esc(s.titulo)}</b> <span class="small muted">${esc(DEP[s.deporte]?.n || '')}${s.duracion ? ' · ' + s.duracion + ' min' : ''}</span></summary>
       ${s.notas ? `<p class="small">${esc(s.notas)}</p>` : ''}
-      ${s.bloques.map(b => `<p class="small" style="margin:6px 0 2px"><b>${esc(b.nombre)}</b>${b.series ? ` · ${esc(b.series)} series` : ''}${b.tiempo ? ` · ${esc(b.tiempo)}` : ''}</p><ul class="small" style="margin:0;padding-left:18px">${b.items.map(it => `<li>${esc(it.nombre)}${[it.reps && 'reps ' + it.reps, it.rpe, it.desc && 'desc. ' + it.desc].filter(Boolean).length ? ' · ' + esc([it.reps && 'reps ' + it.reps, it.rpe, it.desc && 'desc. ' + it.desc].filter(Boolean).join(' · ')) : ''}${it.texto ? `<pre class="txt">${esc(it.texto)}</pre>` : ''}</li>`).join('')}</ul>`).join('')}</details>`).join('')}
+      ${s.bloques.map(b => `<p class="small" style="margin:6px 0 2px"><b>${esc(b.nombre)}</b>${b.series ? ` · ${esc(b.series)} series` : ''}${b.tiempo ? ` · ${esc(b.tiempo)}` : ''}</p><ul class="small" style="margin:0;padding-left:18px">${b.items.map(it => `<li>${esc(it.nombre)}${[it.reps && 'reps ' + it.reps, it.rpe, it.desc && 'desc. ' + it.desc].filter(Boolean).length ? ' · ' + esc([it.reps && 'reps ' + it.reps, it.rpe, it.desc && 'desc. ' + it.desc].filter(Boolean).join(' · ')) : ''}${it.texto ? txtHTML(it.texto, s.deporte) : ''}</li>`).join('')}</ul>`).join('')}</details>`).join('')}
   </div>`;
   $('#iasv').onclick = () => { guardar([{ tipo: 'plan', doc: pl }]); S.ui.iaRes = null; S.ui.plan = pl.id; S.tab = 'planes'; LS.set('abs2-tab', 'planes'); marcoCoach(); vPlan($('#main')); toast('Plan guardado: revísalo y asígnalo desde el Calendario'); };
 }
@@ -1873,8 +1973,8 @@ function itemDep(s, b, bi, ii, it, r) {
     ${v ? `<button type="button" class="thumb" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo: ${esc(it.nombre)}"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
     ${s.deporte !== 'fuerza' ? `<button type="button" class="chk" data-hecho="${s.id}|${bi}|${ii}" aria-pressed="${!!r.hecho?.[`${bi}|${ii}`]}" aria-label="Marcar hecho">${CHECK}</button>` : ''}</div>`;
   let body = '';
-  if (it.texto) body += `<pre class="txt">${esc(it.texto)}</pre>`;
-  else if (it.filas?.length) body += `<ul class="filas">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f))}</li>`).join('')}</ul>`;
+  if (it.texto) body += txtHTML(it.texto, s.deporte);
+  else if (it.filas?.length) body += `<ul class="filas ${s.deporte === 'natacion' ? 'nat' : ''}">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f, s.deporte))}</li>`).join('')}</ul>`;
   if (s.deporte === 'fuerza') {
     const n = nSeries(b, it), ult = ultimaKg(it, s);
     body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const id = `${s.id}|${bi}|${ii}|${k}`, x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td><input data-kg="${id}" inputmode="decimal" placeholder="${esc(ult?.kg[k] ?? ult?.kg.at(-1) ?? '—')}" value="${esc(x.kg || '')}" aria-label="Kilos serie ${k + 1}${ult ? ' (la última vez ' + esc(ult.kg[k] ?? ult.kg.at(-1)) + ' kg)' : ''}"></td><td class="c"><button type="button" class="chk" data-set="${id}" aria-pressed="${!!x.ok}" aria-label="Serie ${k + 1} hecha">${CHECK}</button></td></tr>`; }).join('')}</tbody></table>`;
