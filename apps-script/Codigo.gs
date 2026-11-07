@@ -338,6 +338,14 @@ function api_(q) {
     const checkins = filas.filter(r => r.tipo === 'checkin' && r.ref === dep.id).map(doc_).filter(Boolean);
     return { ok: true, dep: pub, sesiones, registros, ejercicios, grupos, actividades, mensajes, checkins, strava: stravaEstadoDep_(dep.id), pushApp: props_().getProperty('PUSH_APP') || '' };
   }
+  // El deportista marca sus días de gimnasio (1 = lunes … 7 = domingo)
+  if (a === 'depDias') {
+    const dep = deportista_(q.id, q.pin, false);
+    if (!dep) return { ok: false, error: 'pin' };
+    dep.disponibilidad = (Array.isArray(q.dias) ? q.dias : []).map(Number).filter((n, i, l) => n >= 1 && n <= 7 && l.indexOf(n) === i).sort((x, y) => x - y);
+    guardarDocs_([{ tipo: 'deportista', doc: dep }]);
+    return { ok: true, dias: dep.disponibilidad };
+  }
   // El deportista guarda sus mensajes al entrenador y su check-in semanal
   if (a === 'depGuardar') {
     const dep = deportista_(q.id, q.pin, false);
@@ -549,13 +557,27 @@ function fichaAlta_(d, f) {
   if (f.lesion) d.lesiones = (d.lesiones || []).concat([{ id: 'l' + Date.now().toString(36), desc: String(f.lesion).slice(0, 300), desde: hoy }]);
   if (Array.isArray(f.dias) && f.dias.length) d.disponibilidad = f.dias.map(Number).filter(n => n >= 1 && n <= 7);
 }
+// Sesiones de un deportista para un día. Las de fuerza del grupo van, en orden, a sus días de gimnasio (disponibilidad, 1 = lunes);
+// si hay más sesiones que días, las que sobran se quedan en su fecha (igual que en la app).
+function sesionesDelDia_(todas, d, dia) {
+  const mias = todas.filter(s => s.dep === d.id || (s.grupo && (d.grupos || []).indexOf(s.grupo) >= 0));
+  const dias = (d.disponibilidad || []).map(Number).filter((n, i, l) => n >= 1 && n <= 7 && l.indexOf(n) === i).sort((a, b) => a - b);
+  const gymG = s => s.grupo && s.deporte === 'fuerza';
+  if (!dias.length) return mias.filter(s => s.fecha === dia);
+  const h = new Date(dia + 'T12:00:00'), dw = (h.getDay() + 6) % 7, lun = new Date(h.getTime() - dw * 864e5);
+  const f = x => Utilities.formatDate(x, 'Europe/Madrid', 'yyyy-MM-dd'), lunK = f(lun), domK = f(new Date(lun.getTime() + 6 * 864e5));
+  const gym = mias.filter(s => gymG(s) && s.fecha >= lunK && s.fecha <= domK).sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.id) < String(b.id) ? -1 : 1);
+  const i = dias.indexOf(dw + 1);
+  return mias.filter(s => !gymG(s) && s.fecha === dia)
+    .concat(i >= 0 && i < gym.length ? [gym[i]] : [], gym.slice(dias.length).filter(s => s.fecha === dia));
+}
 // Aviso de cada mañana: qué toca hoy (y los lunes, recordar el check-in). Se instala con instalarAvisos().
 function avisosDiarios() {
   const filas = leerDatos_(), hoy = Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd');
   const lunes = Utilities.formatDate(new Date(), 'Europe/Madrid', 'u') === '1';
-  const ses = docs_(filas, 'sesion').filter(s => s.fecha === hoy);
+  const ses = docs_(filas, 'sesion');
   docs_(filas, 'deportista').filter(d => !d.archivado).forEach(d => {
-    const mias = ses.filter(s => s.dep === d.id || (s.grupo && (d.grupos || []).indexOf(s.grupo) >= 0));
+    const mias = sesionesDelDia_(ses, d, hoy);
     if (mias.length) push_([d.id], 'Hoy toca entrenar', mias.map(s => s.titulo || s.deporte).join(' · ') + (lunes ? ' · Rellena tu check-in semanal' : ''));
     else if (lunes) push_([d.id], 'Check-in semanal', 'Cuéntale a tu entrenador cómo llegas a la semana (1 minuto).');
   });

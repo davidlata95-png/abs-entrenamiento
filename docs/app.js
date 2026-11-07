@@ -1867,6 +1867,37 @@ function aplicarDep(j) {
   D.actividad = j.actividades || []; S.strava = j.strava || {};
   D.mensaje = j.mensajes || []; D.checkin = j.checkins || []; S.pushApp = j.pushApp || S.pushApp || '';
   if (S.pushApp) cargarPush(j.dep.id);
+  reubicarGym();
+}
+/* Días de gimnasio: las sesiones de fuerza del grupo se colocan, semana a semana y en orden, en los días que la persona
+   ha marcado (disponibilidad, 1 = lunes). Si hay más sesiones que días, las que sobran se quedan en su fecha.
+   Una sesión que ya tiene algo registrado se queda en el día en que se hizo. */
+function reubicarGym() {
+  const dias = [...new Set(S.yo?.disponibilidad || [])].map(Number).filter(n => n >= 1 && n <= 7).sort((a, b) => a - b), sem = {};
+  (D.sesion || []).forEach(s => {
+    s.fechaPlan = s.fechaPlan || s.fecha; s.fecha = s.fechaPlan;
+    if (dias.length && s.deporte === 'fuerza' && s.grupo && s.fechaPlan) (sem[lunesDe(s.fechaPlan)] = sem[lunesDe(s.fechaPlan)] || []).push(s);
+  });
+  Object.entries(sem).forEach(([lun, l]) => {
+    l.sort((a, b) => a.fechaPlan.localeCompare(b.fechaPlan) || String(a.id).localeCompare(String(b.id)));
+    const r = l.map(s => regDe(s)), hecho = r.map(x => x?.fecha && (Object.keys(x.sets || {}).length || Object.keys(x.hecho || {}).length || x.minutos));
+    const libres = dias.map(n => key(addDays(parseKey(lun), n - 1))).filter(f => !l.some((s, i) => hecho[i] && r[i].fecha === f));
+    l.forEach((s, i) => { s.fecha = hecho[i] ? r[i].fecha : (libres.shift() || s.fechaPlan); });
+  });
+}
+function diasGymHTML() {
+  const d = S.yo?.disponibilidad || [];
+  return `<div class="gymdias"><b>Mis días de gimnasio</b><div class="chips">${DIAS.map((n, i) => `<button type="button" class="chip" data-gdia="${i + 1}" aria-pressed="${d.includes(i + 1)}">${n}</button>`).join('')}</div><small class="muted">${d.length ? 'Tus sesiones de fuerza del grupo aparecen en estos días.' : 'Marca los días que puedes ir al gimnasio y tus sesiones de fuerza se colocarán en ellos.'}</small></div>`;
+}
+function enlazarDiasGym(m) {
+  m.querySelectorAll('[data-gdia]').forEach(b => b.onclick = async () => {
+    const n = +b.dataset.gdia, l = new Set(S.yo.disponibilidad || []), antes = [...l];
+    l.has(n) ? l.delete(n) : l.add(n);
+    S.yo.disponibilidad = [...l].sort((a, c) => a - c);
+    reubicarGym(); cacheDep(); renderDep();
+    try { const j = await api({ a: 'depDias', id: S.auth.id, pin: S.auth.pin, dias: S.yo.disponibilidad }); if (!j.ok) throw 0; }
+    catch (e) { S.yo.disponibilidad = antes; reubicarGym(); cacheDep(); renderDep(); toast('Sin conexión: no se han guardado tus días.'); }
+  });
 }
 /* ---------- Seguimiento: mensajes, check-in semanal, previsto frente a hecho ---------- */
 const mid = () => 'm' + uid();
@@ -1897,7 +1928,7 @@ async function enviarMensaje(sid, depId, txt, yo) {
   D.mensaje.push(doc); marcarVisto([doc.id]); cacheDep();
   try { const j = await api({ a: 'depGuardar', id: S.auth.id, pin: S.auth.pin, docs: [{ tipo: 'mensaje', doc }] }); if (!j.ok) throw 0; toast('Enviado'); } catch (e) { toast('Sin conexión: no se ha enviado. Inténtalo luego.'); D.mensaje = D.mensaje.filter(m => m.id !== doc.id); }
 }
-function cacheDep() { const c = LS.get('abs2-cache', null); if (c?.modo === 'dep' && c.r) { c.r.mensajes = D.mensaje; c.r.checkins = D.checkin; LS.set('abs2-cache', c); } }
+function cacheDep() { const c = LS.get('abs2-cache', null); if (c?.modo === 'dep' && c.r) { c.r.mensajes = D.mensaje; c.r.checkins = D.checkin; if (S.yo && c.r.dep) c.r.dep.disponibilidad = S.yo.disponibilidad || []; LS.set('abs2-cache', c); } }
 // Lo hecho frente a lo previsto: en natación y carrera con Strava (distancia o tiempo); en fuerza, las series marcadas
 function realizado(s, d) {
   const r = s.grupo ? D.registro.find(x => x.ses === s.id && x.dep === d.id) : (S.auth?.modo === 'dep' ? regDe(s) : byId('registro', s.id));
@@ -2103,6 +2134,7 @@ function renderDep() {
 function vSemanaDep(m) {
   const lun = monday(parseKey(S.ui.dia));
   m.innerHTML = `<div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(addDays(lun, 6))}</b><span>Toca un ejercicio para ver detalles</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
+    ${diasGymHTML()}
     <div class="wplan">${[0, 1, 2, 3, 4, 5, 6].map(i => {
       const d = addDays(lun, i), k = key(d), ss = D.sesion.filter(s => s.fecha === k);
       const esHoy = k === key(today());
@@ -2112,6 +2144,7 @@ function vSemanaDep(m) {
     }).join('')}</div>`;
   $('#pw').onclick = () => { S.ui.dia = key(addDays(lun, -7)); renderDep(); };
   $('#nw').onclick = () => { S.ui.dia = key(addDays(lun, 7)); renderDep(); };
+  enlazarDiasGym(m);
   // Tap en día header → abrir ese día completo
   m.querySelectorAll('[data-wpk]').forEach(d => d.querySelector('.wpdh').onclick = () => { S.ui.dia = d.dataset.wpk; S.tab = 'hoy'; marcoDep(); });
   // Tap en ejercicio → abrir el día
