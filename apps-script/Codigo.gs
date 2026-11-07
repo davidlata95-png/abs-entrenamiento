@@ -410,8 +410,8 @@ function api_(q) {
     if (q.op === 'pushPrueba') { const r = push_([String(q.a2 || 'coach')], 'ABS Entrenamiento', 'Aviso de prueba ✓'); return { ok: true, r: r }; }
     if (q.op === 'borrar') { borrarDocs_(q.items || []); return { ok: true }; }
     // Asistente IA: la clave de la API de Anthropic se guarda en las propiedades del script (no en la hoja)
-    if (q.op === 'iaGuardarClave') { PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', String(q.key || '').trim()); return { ok: true }; }
-    if (q.op === 'iaClave') { return { ok: true, key: PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') || '' }; }
+    if (q.op === 'iaGuardarClave') { PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', String(q.key || '').trim()); return { ok: true }; }
+    if (q.op === 'iaClave') { const p = PropertiesService.getScriptProperties(); return { ok: true, key: p.getProperty('GEMINI_API_KEY') || '' }; }
     // Strava: ID y secreto de la app de Strava del entrenador (en las propiedades del script, no en la hoja)
     if (q.op === 'stravaConfig') { const p = PropertiesService.getScriptProperties(); p.setProperty('STRAVA_ID', String(q.id || '').trim()); if (q.secret) p.setProperty('STRAVA_SECRET', String(q.secret).trim()); return { ok: true, estado: stravaEstado_() }; }
     if (q.op === 'stravaEstado') return { ok: true, estado: stravaEstado_() };

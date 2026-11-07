@@ -242,6 +242,40 @@ dialog::backdrop{background:rgba(5,10,12,.6)}
 .scard .ok{color:var(--ok);font-weight:700}
 .add{border:1px dashed var(--line);background:transparent;border-radius:10px;padding:6px;color:var(--muted);font-weight:700;font-size:13px}
 
+/* Deportista: vista semanal tipo planning */
+.wplan{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.wpday{background:var(--card);border:1px solid var(--line);box-shadow:var(--sh);border-radius:14px;padding:6px;display:flex;flex-direction:column;gap:4px;min-height:100px}
+.wpday.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--sh)}
+.wpdh{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:8px}
+.wpdh:hover{background:var(--card2)}
+.wpdh b{color:var(--fg);font-size:15px}
+.wprest{font-size:12px;color:var(--faint);text-align:center;padding:8px 0}
+.wpses{border-left:3px solid var(--c);border-radius:8px;background:color-mix(in srgb,var(--c) 6%,var(--card));padding:5px 6px;display:flex;flex-direction:column;gap:3px}
+.wpsh{display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px}
+.wpsh i{width:8px;height:8px;border-radius:3px;background:var(--c);flex:none}
+.wpsh b{font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wpsh small{font-size:11px;color:var(--muted)}
+.wpsh .mono{font-family:var(--f-num);font-size:10px}
+.wpsh .wpok{color:var(--ok);font-weight:700}
+.wpitems{display:flex;flex-direction:column;gap:2px}
+.wpex{border:0;background:transparent;padding:3px 4px;border-radius:6px;text-align:left;display:flex;flex-direction:column;gap:1px;cursor:pointer;width:100%}
+.wpex:hover{background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.wpex.done{opacity:.55}
+.wpex.done .wpn{text-decoration:line-through}
+.wpn{font-size:12px;font-weight:600;line-height:1.25;color:var(--fg)}
+.wpc{font-size:10.5px;color:var(--muted);line-height:1.2}
+.wpms{display:flex;flex-direction:column;gap:1px;padding:2px 4px;font-size:10.5px;color:var(--muted);border-left:2px solid color-mix(in srgb,var(--c) 30%,transparent);margin-left:4px}
+.wpact{margin-top:2px}
+.wpact .actm{font-size:11px;padding:3px 6px}
+@media (max-width:820px){
+  .wplan{grid-template-columns:1fr;gap:4px}
+  .wpday{flex-direction:column;min-height:auto;padding:8px 10px;border-radius:12px}
+  .wpdh b{font-size:16px}
+  .wpn{font-size:13px}
+  .wpc{font-size:11px}
+  .wpsh b{font-size:13px}
+}
+
 /* Listas */
 .list{display:flex;flex-direction:column;gap:8px}
 .item{background:var(--card);border:1px solid var(--line);box-shadow:var(--sh);border-radius:16px;padding:10px 12px;display:flex;gap:10px;align-items:center;text-align:left;width:100%}

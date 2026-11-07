@@ -103,11 +103,48 @@ function txtHTML(texto, dep) {
   const lineas = String(texto || '').split('\n').map(l => {
     const sang = l.match(/^\s*/)[0], cont = l.slice(sang.length);
     if (!cont) return '';
-    const segs = cont.split(/(\s*\+\s*)/), zs = segs.map((x, i) => i % 2 ? '' : zonaNat(x)), unicas = [...new Set(zs.filter(Boolean))];
+    const segs = cont.split(/(\s*\+\s*)/), zs = segs.map((x, i) => i % 2 ? '' : zonaNat(x) || zonaSin(x)), unicas = [...new Set(zs.filter(Boolean))];
     const comun = unicas.length === 1 ? unicas[0] : '';
     return esc(sang) + segs.map((x, i) => i % 2 ? esc(x) : pintar(x, zs[i] || comun)).join('');
   });
   return `<pre class="txt nat">${lineas.join('\n')}</pre>`;
+}
+// Palabras habituales en sets escritos (Instagram, Train2Go…) que equivalen a una intensidad; solo para colorear
+function zonaSin(t) {
+  t = String(t);
+  if (/\b(?:400\s*(?:pace|rp|race\s*pace)|(?:rp|ritmo(?:\s+de)?)\s*400)\b/i.test(t)) return 'r3p';
+  if (/\b(?:200\s*(?:pace|rp|race\s*pace)|(?:rp|ritmo(?:\s+de)?)\s*200)\b/i.test(t)) return 'r4';
+  if (/\b(?:(?:50|100)\s*(?:pace|rp|race\s*pace)|(?:rp|ritmo(?:\s+de)?)\s*(?:50|100))\b/i.test(t)) return 'r5';
+  if (/\b(fast|sprint|max(?:imo|imal|imum)?|all[\s-]*out|r[aá]pid[oa]s?|explosiv[oa]s?|spike)\b/i.test(t)) return 'r6';
+  if (/\b(threshold|umbral|css)\b/i.test(t)) return 'r3';
+  if (/\b(easy|recovery|recuperaci[oó]n|loosen|soltar|suelto|relajad[oa]|choice\s+easy|social)\b/i.test(t)) return 'r0';
+  return '';
+}
+/* Saca solo la parte principal (main set) de un entreno escrito y lo deja maquetado: quita calentamiento y vuelta a la calma,
+   parte en líneas lo que venía seguido con « · » y sangra lo que va dentro de cada «N x» / «3 Rounds». */
+const SEC_RE = /^\s*[«"“]?\s*(warm[\s-]*up|calentamiento|pre[\s-]*set|activaci[oó]n|main[\s-]*set|serie principal|parte principal|cool[\s-]*down|warm[\s-]*down|swim[\s-]*down|loosen[\s-]*down|vuelta a la calma|enfriamiento)\b\s*[:\-–—]?\s*/i;
+function mainSet(t) {
+  const ls = String(t || '').replace(/\r/g, '').split('\n').flatMap(l => l.split(/\s+·\s+/)).map(l => l.replace(/\s+$/, ''));
+  const tipo = l => { const m = l.match(SEC_RE); if (!m) return null; const w = m[1].toLowerCase(); return /main|principal/.test(w) ? 'main' : /up|calent|pre|activ/.test(w) ? 'up' : 'down'; };
+  const tipos = ls.map(tipo), out = [];
+  if (tipos.includes('main')) {
+    let dentro = false;
+    ls.forEach((l, i) => { if (tipos[i]) { dentro = tipos[i] === 'main'; const resto = l.replace(SEC_RE, ''); if (dentro && resto.trim() && !/^\d+\s*m?$/.test(resto.trim())) out.push(resto); return; } if (dentro) out.push(l); });
+  } else if (tipos.some(Boolean)) {
+    let fuera = null; // 'up' hasta la primera línea en blanco; 'down' hasta el final
+    ls.forEach((l, i) => { if (tipos[i]) { fuera = tipos[i]; return; } if (fuera === 'up' && !l.trim()) { fuera = null; return; } if (!fuera) out.push(l); });
+  } else out.push(...ls);
+  // sangría dentro de las repeticiones de bloque
+  const res = []; let sang = false;
+  out.forEach(l => {
+    const x = l.trim();
+    if (!x) { sang = false; if (res.length && res.at(-1) !== '') res.push(''); return; }
+    const cab = /^(\d+)\s*(x|×|rounds?|veces|vueltas|times|series)\b[^\d]*:?$/i.test(x) || /^\d+\s*[x×]\s*(\[[^\]]*\]|\([^)]*\))?\s*:?$/i.test(x) || (/:$/.test(x) && x.length < 40);
+    if (cab) { if (res.length && res.at(-1) !== '' && sang) res.push(''); res.push(x); sang = true; return; }
+    res.push(sang && !/^\s/.test(l) ? '    ' + x : l.replace(/^\s{5,}/, '    '));
+  });
+  while (res.length && res.at(-1) === '') res.pop();
+  return res.join('\n');
 }
 const leyendaNat = () => `<details class="zley"><summary>Intensidades</summary><div>${ZONAS_NAT.map(([k, n]) => `<span><b class="zp" data-z="${k}">${n}</b> ${ZNAT_DESC[k]}</span>`).join('')}</div></details>`;
 const ZCOEF = { r0: 1, r1: 2, r1p: 2, r2: 3, r3: 5, r3p: 9, r4: 15, r5: 40, r6: 50 };
@@ -1476,15 +1513,15 @@ const TIPOS_REF = {
 };
 function vBaseDatos(m) {
   const f = S.ui.bd = S.ui.bd || { dep: 'natacion', tipo: '', origen: '', q: '' };
-  const todos = D.referencia.filter(escrito);
+  const todos = D.referencia.filter(escrito).filter(r => r.deporte !== 'natacion' || r.serie || !igCode(r.url));
   const lista = todos.filter(r => r.deporte === f.dep && (!f.tipo || r.tipo === f.tipo) && (!f.origen || r.origen === f.origen) && (!f.q || norm([r.titulo, r.serie, r.texto, r.autor].join(' ')).includes(norm(f.q))))
     .sort((a, b) => (TIPOS_REF[a.deporte] || []).indexOf(a.tipo) - (TIPOS_REF[b.deporte] || []).indexOf(b.tipo) || (!a.serie && !!igCode(a.url)) - (!b.serie && !!igCode(b.url)) || String(a.titulo).localeCompare(String(b.titulo), 'es'));
   const n = k => todos.filter(r => r.deporte === k).length;
   const origenes = [...new Set(todos.map(r => r.origen).filter(Boolean))].sort();
   const grupos = []; lista.forEach(r => { const g = grupos[grupos.length - 1]; if (g && g.tipo === r.tipo) g.l.push(r); else grupos.push({ tipo: r.tipo, l: [r] }); });
   m.innerHTML = `<div class="row"><h2 class="grow">Base de datos de entrenamientos</h2><label class="btn" style="cursor:pointer">Importar archivo<input type="file" id="rimp" accept=".json,application/json" hidden></label><button class="btn" id="nr">+ Añadir</button></div>
-    <p class="muted small" style="margin-top:0">Solo entrenamientos escritos (de Train2Go, Instagram y los tuyos), ordenados por el contenido que trabajan. El asistente de IA los usa como ejemplos.</p>
-    ${todos.length ? '' : '<div class="empty">La base de datos está vacía.</div>'}
+    <p class="muted small" style="margin-top:0">Solo entrenamientos escritos (de Train2Go, Instagram y los tuyos), ordenados por el contenido que trabajan. En natación se ve solo el main set, con cada intensidad en su color. El asistente de IA los usa como ejemplos.</p>
+    ${f.dep === 'natacion' && todos.length ? leyendaNat() : ''}${todos.length ? '' : '<div class="empty">La base de datos está vacía.</div>'}
     <div class="chips">${Object.entries(DEP).filter(([k]) => n(k)).map(([k, v]) => `<button class="chip" data-rd="${k}" aria-pressed="${f.dep === k}"><i style="--c:${v.c}"></i>${v.n} · ${n(k)}</button>`).join('')}</div>
     <div class="row"><input class="f grow" id="rq" placeholder="Buscar (p. ej. 8x50, aletas, umbral)" value="${esc(f.q)}" style="max-width:320px">
       <select class="f" id="rt" style="max-width:240px"><option value="">Todos los contenidos</option>${(TIPOS_REF[f.dep] || []).map(t => `<option ${t === f.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
@@ -1507,7 +1544,7 @@ function vBaseDatos(m) {
   };
   $('#nr').onclick = () => editRef({ id: uid(), origen: 'Propio', deporte: f.dep, tipo: f.tipo || (TIPOS_REF[f.dep] || [''])[0], titulo: '', texto: '' }, true);
   m.querySelectorAll('[data-re]').forEach(b => b.onclick = () => editRef(clone(byId('referencia', b.dataset.re))));
-  m.querySelectorAll('[data-rcp]').forEach(b => b.onclick = async () => { const r = byId('referencia', b.dataset.rcp); try { await navigator.clipboard.writeText(r.serie || r.texto || ''); toast('Copiado'); } catch (e) { toast('No se pudo copiar'); } });
+  m.querySelectorAll('[data-rcp]').forEach(b => b.onclick = async () => { const r = byId('referencia', b.dataset.rcp); try { await navigator.clipboard.writeText(r.deporte === 'natacion' ? mainSet(r.serie || r.texto) : (r.serie || r.texto || '')); toast('Copiado'); } catch (e) { toast('No se pudo copiar'); } });
   m.querySelectorAll('[data-rmas]').forEach(b => b.onclick = () => { const t = b.dataset.rmas; S.ui.bdMas = S.ui.bdMas || {}; S.ui.bdMas[t] = ((S.ui.bdMas[t]) || 12) + 12; const y = scrollY; vBaseDatos(m); scrollTo(0, y); });
 }
 // Tarjeta de la base de datos: el entrenamiento escrito en texto, listo para copiar
@@ -1515,6 +1552,10 @@ const igCode = u => (String(u || '').match(/instagram\.com\/(?:p|reel)\/([\w-]+)
 function refCard(r) {
   const pie = `<div class="row small muted" style="justify-content:space-between;gap:6px"><span>${esc([r.origen === 'Instagram' && r.autor ? '@' + r.autor : r.origen, r.medida].filter(Boolean).join(' · '))}</span><span><button class="lnk" data-rcp="${r.id}">Copiar</button> · ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">Abrir</a> · ` : ''}<button class="lnk" data-re="${r.id}">Editar</button></span></div>`;
   const cap = r.texto && !/^\(Sin texto/.test(r.texto) ? r.texto : '';
+  if (r.deporte === 'natacion' && (r.serie || (!igCode(r.url) && r.texto))) {
+    const ms = mainSet(r.serie || r.texto) || r.serie || r.texto;
+    return `<div class="card refc">${pie}${r.serie ? '' : `<b>${esc(r.titulo)}</b>`}${txtHTML(ms, 'natacion')}</div>`;
+  }
   if (r.serie) return `<div class="card refc">${pie}<pre class="txt">${esc(r.serie)}</pre>${cap && cap.trim() !== r.serie.trim() ? `<details><summary class="small muted">Texto de la publicación</summary><pre class="txt">${esc(cap)}</pre></details>` : ''}</div>`;
   if (igCode(r.url)) return `<div class="card refc">${pie}<p class="small muted" style="margin:0">Sin serie escrita en la publicación. Texto del autor:</p><pre class="txt">${esc(cap || r.titulo)}</pre></div>`;
   return `<div class="card refc">${pie}<b>${esc(r.titulo)}</b><pre class="txt">${esc(r.texto)}</pre></div>`;
@@ -1538,8 +1579,8 @@ function editRef(r, nuevo) {
   if (!nuevo) $('#rfdel').onclick = () => { if (confirm('¿Borrar este entrenamiento de la base de datos?')) { borrar([{ tipo: 'referencia', id: r.id }]); cerrarEd(); renderCoach(); } };
 }
 
-/* ---------- Asistente IA (Claude, a través de la API de Anthropic) ---------- */
-const IA_MODELOS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (recomendado)'], ['claude-opus-5-5', 'Claude Opus 5.5 (más potente, más caro)']];
+/* ---------- Asistente IA (Gemini, gratis con la API de Google) ---------- */
+const IA_MODELOS = [['gemini-2.5-flash', 'Gemini 2.5 Flash (rápido, recomendado)'], ['gemini-2.5-pro', 'Gemini 2.5 Pro (más potente, más lento)']];
 let iaKey = null;
 async function claveIA() {
   if (iaKey) return iaKey;
@@ -1550,7 +1591,7 @@ async function claveIA() {
 function vIA(m) {
   const f = S.ui.ia = S.ui.ia || { deporte: 'fuerza', objetivo: '', perfil: '', nivel: 'Intermedio', semanas: 4, dias: [1, 3, 6], duracion: 60, material: 'Barra, mancuernas, discos, rack, bancos, gomas, cajón y balón medicinal', fecha: '', notas: '', modelo: IA_MODELOS[0][0] };
   m.innerHTML = `<div class="row"><h2 class="grow">Asistente IA</h2><button class="btn sm ghost" id="iak">Clave de la API</button></div>
-    <p class="muted small" style="margin-top:0">Describe a quién va dirigido y qué buscas. La IA prepara un plan basado en la evidencia, con los ejercicios de tu biblioteca y tu base de datos como referencia. El plan se guarda en Planes para que lo revises antes de asignarlo.</p>
+    <p class="muted small" style="margin-top:0">Describe a quién va dirigido y qué buscas. Gemini (gratis) prepara un plan basado en la evidencia, con los ejercicios de tu biblioteca y tu base de datos como referencia. El plan se guarda en Planes para que lo revises antes de asignarlo.</p>
     <div class="card list">
       <div class="l">Deporte<div class="chips">${Object.entries(DEP).map(([k, v]) => `<button type="button" class="chip" data-iad="${k}" aria-pressed="${f.deporte === k}"><i style="--c:${v.c}"></i>${v.n}</button>`).join('')}</div></div>
       <label class="l">Objetivo<textarea class="f" id="iao" rows="2" placeholder="p. ej. Mejorar la fuerza máxima y la potencia en el agua antes del campeonato de invierno">${esc(f.objetivo)}</textarea></label>
@@ -1591,13 +1632,13 @@ function vIA(m) {
   if (S.ui.iaRes) pintarResultadoIA($('#iar'), S.ui.iaRes);
 }
 function configIA(despues) {
-  abrirEd('Clave de la API de Anthropic', `<div class="card list">
-    <p class="small">El asistente usa Claude a través de la API de Anthropic. Se paga por uso, aparte de tu suscripción.</p>
-    <p class="small"><b>1.</b> Entra en <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>, añade saldo en <i>Billing</i> y crea una clave en <i>API keys</i>.<br><b>2.</b> Pégala aquí. Se guarda en el Apps Script de tu hoja (no en la hoja ni en el móvil de los deportistas).</p>
-    <label class="l">Clave<input class="f mono" id="iakk" placeholder="sk-ant-…" autocomplete="off"></label></div>`,
+  abrirEd('Clave de la API de Gemini (gratis)', `<div class="card list">
+    <p class="small">El asistente usa Gemini, de Google. Tiene un nivel gratuito: no hay que pagar ni poner tarjeta.</p>
+    <p class="small"><b>1.</b> Entra en <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> con tu cuenta de Google y pulsa <i>Create API key</i> (vale la que se crea sin proyecto de pago).<br><b>2.</b> Pégala aquí. Se guarda en el Apps Script de tu hoja (no en la hoja ni en el móvil de los deportistas).</p>
+    <label class="l">Clave<input class="f mono" id="iakk" placeholder="AIza…" autocomplete="off"></label></div>`,
     () => {
       const k = $('#iakk').value.trim();
-      if (!/^sk-ant-/.test(k)) return toast('La clave empieza por sk-ant-'), false;
+      if (!/^AIza[\w-]{20,}$/.test(k)) return toast('La clave de Gemini empieza por AIza'), false;
       api({ a: 'coach', op: 'iaGuardarClave', clave: S.auth.clave, key: k }).then(j => { if (j.ok) { iaKey = k; toast('Clave guardada'); despues && despues(); } else toast(j.error === 'op' ? 'Falta actualizar el Apps Script con el código nuevo' : 'No se pudo guardar'); }).catch(() => toast('No hay conexión'));
     });
 }
@@ -1639,19 +1680,25 @@ BIBLIOTECA DE EJERCICIOS (id | deporte | categoría | nombre):
 ${lib || '(vacía)'}
 
 ${refs ? `SESIONES DE REFERENCIA DE LA BASE DE DATOS DEL ENTRENADOR (imita su estilo y notación):\n${refs}` : ''}`;
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(f.modelo) + ':generateContent', {
     method: 'POST',
-    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: f.modelo, max_tokens: 32000, system: IA_SISTEMA, messages: [{ role: 'user', content: prompt }] }),
+    headers: { 'x-goog-api-key': key, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: IA_SISTEMA }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 60000, responseMimeType: 'application/json' },
+    }),
   });
   const j = await r.json();
-  if (!r.ok) throw new Error(j.error?.type === 'authentication_error' ? 'la clave no es válida' : j.error?.message || ('error ' + r.status));
-  const txt = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  if (!r.ok) { const m = j.error?.message || ''; throw new Error(/API key not valid|API_KEY_INVALID/i.test(m) ? 'la clave no es válida' : /quota|RESOURCE_EXHAUSTED/i.test(m) ? 'has llegado al límite gratuito por ahora; espera un momento o prueba con Gemini 2.5 Flash' : m || ('error ' + r.status)); }
+  const cand = (j.candidates || [])[0];
+  const txt = (cand?.content?.parts || []).map(p => p.text || '').join('');
+  if (!txt) throw new Error(cand?.finishReason === 'MAX_TOKENS' ? 'el plan era demasiado largo; prueba con menos semanas' : (j.promptFeedback?.blockReason ? 'la respuesta fue bloqueada' : 'la respuesta no trae un plan'));
   const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
   if (a < 0 || b < a) throw new Error('la respuesta no trae un plan');
   let plan;
-  try { plan = JSON.parse(txt.slice(a, b + 1)); } catch (e) { throw new Error(j.stop_reason === 'max_tokens' ? 'el plan era demasiado largo; prueba con menos semanas' : 'la respuesta no se pudo leer'); }
-  plan._semanas = f.semanas; plan._deporte = f.deporte; plan._uso = j.usage;
+  try { plan = JSON.parse(txt.slice(a, b + 1)); } catch (e) { throw new Error(cand?.finishReason === 'MAX_TOKENS' ? 'el plan era demasiado largo; prueba con menos semanas' : 'la respuesta no se pudo leer'); }
+  plan._semanas = f.semanas; plan._deporte = f.deporte; plan._uso = j.usageMetadata;
   return plan;
 }
 const key2 = d => key(d);
@@ -2055,11 +2102,57 @@ function renderDep() {
 }
 function vSemanaDep(m) {
   const lun = monday(parseKey(S.ui.dia));
-  m.innerHTML = `<div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(addDays(lun, 6))}</b><span>Toca una sesión para abrirla</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
-    <div class="list">${[0, 1, 2, 3, 4, 5, 6].map(i => { const d = addDays(lun, i), k = key(d), ss = D.sesion.filter(s => s.fecha === k); return `<div class="card"><div class="row"><b class="grow">${DIAS[i]} ${d.getDate()}</b></div>${ss.length ? ss.map(s => `<div style="margin-top:6px">${scard(s)}</div>`).join('') : actividadesDe(S.yo.id, k).length ? '' : '<small class="muted">Descanso</small>'}${actividadesDe(S.yo.id, k).map(a => `<div style="margin-top:6px">${actMini(a)}</div>`).join('')}</div>`; }).join('')}</div>`;
+  m.innerHTML = `<div class="stepper"><button id="pw" aria-label="Semana anterior">‹</button><div class="d"><b>${fmtD(lun)} – ${fmtD(addDays(lun, 6))}</b><span>Toca un ejercicio para ver detalles</span></div><button id="nw" aria-label="Semana siguiente">›</button></div>
+    <div class="wplan">${[0, 1, 2, 3, 4, 5, 6].map(i => {
+      const d = addDays(lun, i), k = key(d), ss = D.sesion.filter(s => s.fecha === k);
+      const esHoy = k === key(today());
+      return `<div class="wpday ${esHoy ? 'today' : ''}" data-wpk="${k}"><div class="wpdh"><span>${DIAS[i]}</span><b>${d.getDate()}</b></div>
+        ${ss.length ? ss.map(s => sesionCompacta(s)).join('') : actividadesDe(S.yo.id, k).length ? '' : '<div class="wprest">Descanso</div>'}
+        ${actividadesDe(S.yo.id, k).map(a => `<div class="wpact">${actMini(a)}</div>`).join('')}</div>`;
+    }).join('')}</div>`;
   $('#pw').onclick = () => { S.ui.dia = key(addDays(lun, -7)); renderDep(); };
   $('#nw').onclick = () => { S.ui.dia = key(addDays(lun, 7)); renderDep(); };
-  m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.ui.dia = byId('sesion', b.dataset.s).fecha; S.tab = 'hoy'; marcoDep(); });
+  // Tap en día header → abrir ese día completo
+  m.querySelectorAll('[data-wpk]').forEach(d => d.querySelector('.wpdh').onclick = () => { S.ui.dia = d.dataset.wpk; S.tab = 'hoy'; marcoDep(); });
+  // Tap en ejercicio → abrir el día
+  m.querySelectorAll('[data-wpex]').forEach(b => { b.onclick = () => { S.ui.dia = b.closest('[data-wpk]').dataset.wpk; S.tab = 'hoy'; marcoDep(); }; });
+}
+function sesionCompacta(s) {
+  const c = DEP[s.deporte]?.c, r = regDe(s) || {};
+  let tot = 0, hech = 0;
+  (s.bloques || []).forEach((b, bi) => (b.items || []).forEach((it, ii) => {
+    if (s.deporte === 'fuerza') { const n = nSeries(b, it); for (let k = 0; k < n; k++) { tot++; if (r.sets?.[`${bi}|${ii}|${k}`]?.ok) hech++; } }
+    else { tot++; if (r.hecho?.[`${bi}|${ii}`]) hech++; }
+  }));
+  const pct = tot ? Math.round(hech / tot * 100) : 0;
+  const items = (s.bloques || []).flatMap((b, bi) => (b.items || []).map((it, ii) => itemCompacto(s, b, bi, ii, it, r)));
+  return `<div class="wpses" style="--c:${c}"><div class="wpsh"><i></i><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b>${s.duracion ? `<small>${s.duracion}'</small>` : ''}${conEcos(s.deporte) && ecoDe(s) ? `<small class="mono">${ecoTxt(ecoDe(s))}</small>` : ''}${pct ? `<small class="wpok">${pct}%</small>` : ''}</div>
+    ${s.deporte === 'natacion' && s.bloques?.some(b => b.items?.some(it => it.texto)) ? mainSetCompacto(s) : ''}
+    <div class="wpitems">${items.join('')}</div></div>`;
+}
+function itemCompacto(s, b, bi, ii, it, r) {
+  const chips = [];
+  if (s.deporte === 'fuerza') {
+    if (it.series || b.series) chips.push((it.series || b.series) + 'x' + (it.reps || ''));
+    if (it.carga) chips.push(it.carga);
+  } else {
+    if (it.series) chips.push(it.series + 's');
+    if (it.dist) chips.push(s.deporte === 'natacion' ? it.dist + 'm' : it.dist);
+  }
+  if (it.rpe) chips.push('RPE ' + it.rpe);
+  if (it.desc) chips.push(s.deporte === 'fuerza' ? it.desc : 'Rec ' + it.desc);
+  const done = s.deporte === 'fuerza' ? Array.from({ length: nSeries(b, it) }, (_, k) => r.sets?.[`${bi}|${ii}|${k}`]?.ok).every(Boolean) && nSeries(b, it) > 0 : !!r.hecho?.[`${bi}|${ii}`];
+  return `<button class="wpex ${done ? 'done' : ''}" data-wpex="1"><span class="wpn">${esc(it.nombre || '')}</span>${chips.length ? `<span class="wpc">${chips.map(c => esc(c)).join(' · ')}</span>` : ''}</button>`;
+}
+function mainSetCompacto(s) {
+  const lines = [];
+  (s.bloques || []).forEach(b => (b.items || []).forEach(it => {
+    if (!it.texto) return;
+    const ms = mainSet(it.texto);
+    if (ms.length) ms.forEach(l => lines.push(l));
+  }));
+  if (!lines.length) return '';
+  return `<div class="wpms">${lines.slice(0, 4).map(l => `<span>${esc(l.replace(/\s+/g, ' ').trim()).slice(0, 60)}</span>`).join('')}${lines.length > 4 ? `<span class="muted">+${lines.length - 4} más</span>` : ''}</div>`;
 }
 function vDia(m) {
   const dia = parseKey(S.ui.dia), lun = monday(dia);
