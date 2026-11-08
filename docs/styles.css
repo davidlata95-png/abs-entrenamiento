@@ -257,7 +257,9 @@ dialog::backdrop{background:rgba(5,10,12,.6)}
 .wpsh small{font-size:11px;color:var(--muted)}
 .wpsh .mono{font-family:var(--f-num);font-size:10px}
 .wpsh .wpok{color:var(--ok);font-weight:700}
-.wpitems{display:flex;flex-direction:column;gap:2px}
+.wpitems{display:flex;flex-direction:column;gap:4px}
+.wpblk{display:flex;flex-direction:column;gap:1px}
+.wpbh{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--c);padding:2px 4px 0}
 .wpex{border:0;background:transparent;padding:3px 4px;border-radius:6px;text-align:left;display:flex;flex-direction:column;gap:1px;cursor:pointer;width:100%}
 .wpex:hover{background:color-mix(in srgb,var(--fg) 6%,transparent)}
 .wpex.done{opacity:.55}

@@ -2158,22 +2158,23 @@ function sesionCompacta(s) {
     else { tot++; if (r.hecho?.[`${bi}|${ii}`]) hech++; }
   }));
   const pct = tot ? Math.round(hech / tot * 100) : 0;
-  const items = (s.bloques || []).flatMap((b, bi) => (b.items || []).map((it, ii) => itemCompacto(s, b, bi, ii, it, r)));
+  // Cada bloque con su nombre y debajo sus ejercicios
+  const items = (s.bloques || []).filter(b => (b.items || []).length).map((b, bi0) => { const bi = s.bloques.indexOf(b); return `<div class="wpblk"><div class="wpbh">${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.circuito ? ' · ↻ circuito' : ''}</div>${(b.items || []).map((it, ii) => itemCompacto(s, b, bi, ii, it, r)).join('')}</div>`; });
   return `<div class="wpses" style="--c:${c}"><div class="wpsh"><i></i><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b>${s.duracion ? `<small>${s.duracion}'</small>` : ''}${conEcos(s.deporte) && ecoDe(s) ? `<small class="mono">${ecoTxt(ecoDe(s))}</small>` : ''}${pct ? `<small class="wpok">${pct}%</small>` : ''}</div>
     ${s.deporte === 'natacion' && s.bloques?.some(b => b.items?.some(it => it.texto)) ? mainSetCompacto(s) : ''}
     <div class="wpitems">${items.join('')}</div></div>`;
 }
 function itemCompacto(s, b, bi, ii, it, r) {
   const chips = [];
+  // Solo series, repeticiones y RPE
   if (s.deporte === 'fuerza') {
-    if (it.series || b.series) chips.push((it.series || b.series) + 'x' + (it.reps || ''));
-    if (it.carga) chips.push(it.carga);
+    const n = nSeries(b, it); chips.push(n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : (n === 1 ? ' serie' : ' series')));
+    if (it.reps) chips.push(it.reps + ' reps');
   } else {
-    if (it.series) chips.push(it.series + 's');
-    if (it.dist) chips.push(s.deporte === 'natacion' ? it.dist + 'm' : it.dist);
+    if (it.series) chips.push(it.series + (+it.series === 1 ? ' serie' : ' series'));
+    if (it.reps) chips.push(it.reps + ' reps');
   }
-  if (it.rpe) chips.push('RPE ' + it.rpe);
-  if (it.desc) chips.push(s.deporte === 'fuerza' ? it.desc : 'Rec ' + it.desc);
+  if (it.rpe) chips.push(/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe);
   const done = s.deporte === 'fuerza' ? Array.from({ length: nSeries(b, it) }, (_, k) => r.sets?.[`${bi}|${ii}|${k}`]?.ok).every(Boolean) && nSeries(b, it) > 0 : !!r.hecho?.[`${bi}|${ii}`];
   return `<button class="wpex ${done ? 'done' : ''}" data-wpex="1"><span class="wpn">${esc(it.nombre || '')}</span>${chips.length ? `<span class="wpc">${chips.map(c => esc(c)).join(' · ')}</span>` : ''}</button>`;
 }
