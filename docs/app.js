@@ -478,7 +478,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); migrarBib(); migrarEstilos(); marcoCoach(); vaciarCola(); importarFastForce(); stravaSyncCoach(); pushCoach();
+    migrarCats(); migrarBib(); migrarEstilos(); marcoCoach(); vaciarCola(); importarFastForce(); importarHyroxDavid(); stravaSyncCoach(); pushCoach();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -536,6 +536,23 @@ async function importarFastForce() {
     const faltan = docs.filter(x => !byId(x.tipo, x.doc.id));
     if (faltan.length) { guardar(faltan); renderCoach(); toast('Fast Force cargado en Preparación física CDNS (23/11–16/12)', 3500); }
     LS.set('abs2-mig-fastforce', true);
+  } catch (e) {}
+}
+
+// Paso único: carga en el perfil de David Lata las 24 sesiones de Hyrox en pareja (2/11–13/12), aunque coincidan
+// con las de sus grupos. Si el perfil no existe, lo crea sin PIN (lo elige él la primera vez que entra).
+async function importarHyroxDavid() {
+  if (LS.get('abs2-mig-hyrox-dl', false)) return;
+  try {
+    const docs = await (await fetch('migracion-hyrox-david.json', { cache: 'no-store' })).json();
+    const n = t => String(t || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    const todos = D.deportista.filter(x => n(x.nombre) === 'david lata');
+    let d = todos.find(x => !x.archivado) || todos[0];
+    const nuevos = [];
+    if (!d) { d = { id: 'd' + uid(), nombre: 'David Lata', pin: '', deportes: ['fuerza', 'carrera', 'otro'], grupos: [], notas: 'Hyrox 13 de diciembre (en pareja).' }; nuevos.push({ tipo: 'deportista', doc: d }); }
+    const faltan = docs.filter(x => !byId('sesion', x.doc.id)).map(x => ({ tipo: 'sesion', doc: { ...x.doc, dep: d.id } }));
+    if (nuevos.length || faltan.length) { guardar([...nuevos, ...faltan]); renderCoach(); toast('Hyrox cargado en el perfil de David Lata (2/11–13/12)', 3500); }
+    LS.set('abs2-mig-hyrox-dl', true);
   } catch (e) {}
 }
 

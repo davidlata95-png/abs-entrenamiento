@@ -1,0 +1,4118 @@
+[
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s1d1",
+   "fecha": "2026-11-02",
+   "titulo": "Hyrox · Realizado: remo + carrera",
+   "subtitulo": "Hyrox 13 dic · Semana 1 · Acumulación 1 · en pareja",
+   "deporte": "carrera",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "",
+   "diaTxt": "Lunes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 1,
+    "dia": 1
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Bloque principal",
+     "series": 6,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Intervalos en remo ergómetro",
+       "video": "",
+       "reps": "600 m",
+       "rpe": "",
+       "desc": "",
+       "notas": "Encadenado con 600 m de carrera",
+       "series": 6
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "600 m",
+       "rpe": "",
+       "desc": "",
+       "notas": "Tras cada 600 m de remo",
+       "series": 6
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s1d2",
+   "fecha": "2026-11-04",
+   "titulo": "Hyrox · Fuerza + estaciones",
+   "subtitulo": "Hyrox 13 dic · Semana 1 · Acumulación 1 · en pareja",
+   "deporte": "fuerza",
+   "duracion": "60",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga. Acondicionamiento: EMOM de 24 min alternando: minuto impar A, minuto par B. Cada uno hace 4 vueltas de las tres estaciones.",
+   "diaTxt": "Miércoles",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 1,
+    "dia": 2
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Movilidad de tobillo a pared",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo a una pierna",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Fuerza 1",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Sentadilla trasera",
+       "video": "",
+       "reps": "5",
+       "rpe": "7",
+       "desc": "150 s",
+       "notas": "",
+       "series": 4
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Peso muerto rumano",
+       "video": "",
+       "reps": "8",
+       "rpe": "7",
+       "desc": "2'",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Remo con mancuerna",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press con mancuernas",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Banco plano",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Acondicionamiento",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "15",
+       "rpe": "7",
+       "desc": "",
+       "notas": "EMOM 12 min · minuto 1",
+       "series": 4
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Minuto 2 · sled push peso competición",
+       "series": 4
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Paseo del granjero",
+       "video": "",
+       "reps": "50 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Minuto 3 · 2 × 24 kg",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s1d3",
+   "fecha": "2026-11-06",
+   "titulo": "Hyrox · Aeróbico + tren superior",
+   "subtitulo": "Hyrox 13 dic · Semana 1 · Acumulación 1 · en pareja",
+   "deporte": "fuerza",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Rodaje juntos a ritmo de conversación; los progresivos, lado a lado. Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga.",
+   "diaTxt": "Viernes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 1,
+    "dia": 3
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "30 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "5:20-5:45/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Progresivos 100 m",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "6",
+       "desc": "Vuelta andando",
+       "notas": "Hasta ritmo Hyrox",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 1",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6-8",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press de hombro con mancuernas",
+       "video": "",
+       "reps": "8-10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Remo invertido",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Superserie con flexiones",
+       "series": 3
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Flexiones",
+       "video": "",
+       "reps": "12",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "",
+       "series": 3
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s1d4",
+   "fecha": "2026-11-08",
+   "titulo": "Hyrox · Hyrox mixto",
+   "subtitulo": "Hyrox 13 dic · Semana 1 · Acumulación 1 · en pareja",
+   "deporte": "otro",
+   "duracion": "60",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Bloque principal: Relevo: A corre mientras B hace la estación; al llegar A, cambio. Cada uno completa todas las carreras y estaciones. Alternad quién empieza cada ronda. Aquí la carrera es de 800 m.",
+   "diaTxt": "Domingo",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 1,
+    "dia": 4
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Cat-camel",
+       "video": "",
+       "reps": "8",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Sentadilla profunda con apoyo",
+       "video": "",
+       "reps": "30 s",
+       "rpe": "",
+       "desc": "",
+       "notas": "Abriendo rodillas con los codos",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Monster walk con banda",
+       "video": "",
+       "reps": "10 pasos/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Burpees",
+       "video": "",
+       "reps": "6",
+       "rpe": "5",
+       "desc": "",
+       "notas": "Burpee broad jump técnico",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Bloque principal",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Series 800 m",
+       "video": "",
+       "reps": "800 m",
+       "rpe": "7",
+       "desc": "90 s entre rondas",
+       "notas": "4:50/km + estación",
+       "series": 4
+      },
+      {
+       "id": "i2_1",
+       "nombre": "SkiErg",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 1",
+       "series": 1
+      },
+      {
+       "id": "i2_2",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 2 · sled pull",
+       "series": 1
+      },
+      {
+       "id": "i2_3",
+       "nombre": "Intervalos en remo ergómetro",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 3",
+       "series": 1
+      },
+      {
+       "id": "i2_4",
+       "nombre": "Burpees",
+       "video": "",
+       "reps": "20",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 4 · burpee broad jumps",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Complementario",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Zancada caminando",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Sandbag 20 kg",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "1'",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s2d1",
+   "fecha": "2026-11-09",
+   "titulo": "Hyrox · Aeróbico + tren superior",
+   "subtitulo": "Hyrox 13 dic · Semana 2 · Acumulación 2 · en pareja",
+   "deporte": "fuerza",
+   "duracion": "55",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Rodaje juntos a ritmo de conversación; los progresivos, lado a lado. Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga.",
+   "diaTxt": "Lunes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 2,
+    "dia": 1
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "35 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "5:20-5:45/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Progresivos 100 m",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "6",
+       "desc": "Vuelta andando",
+       "notas": "Hasta ritmo Hyrox",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 1",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6-8",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press de hombro con mancuernas",
+       "video": "",
+       "reps": "8-10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Remo invertido",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Superserie con flexiones",
+       "series": 3
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Flexiones",
+       "video": "",
+       "reps": "12",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "",
+       "series": 3
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s2d2",
+   "fecha": "2026-11-11",
+   "titulo": "Hyrox · Carrera + ergos",
+   "subtitulo": "Hyrox 13 dic · Semana 2 · Acumulación 2 · en pareja",
+   "deporte": "carrera",
+   "duracion": "65",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Salís juntos en cada serie, cada uno a su ritmo; el más rápido espera trotando y empezáis la recuperación a la vez. Acondicionamiento: Un ergo para los dos: por turnos, la serie de tu pareja es tu descanso (el que espera, trote suave o plancha).",
+   "diaTxt": "Miércoles",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 2,
+    "dia": 2
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "World's greatest stretch",
+       "video": "",
+       "reps": "5/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Balanceo de piernas frontal",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "Y lateral",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Elevación de talones",
+       "video": "",
+       "reps": "12/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "A una pierna",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 4 progresivos de 80 m",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Tempo run",
+       "video": "",
+       "reps": "2 km",
+       "rpe": "8",
+       "desc": "2' trotando",
+       "notas": "4:25-4:30/km",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Intervalos en remo ergómetro",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Ritmo competición",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s2d3",
+   "fecha": "2026-11-13",
+   "titulo": "Hyrox · Fuerza + estaciones",
+   "subtitulo": "Hyrox 13 dic · Semana 2 · Acumulación 2 · en pareja",
+   "deporte": "fuerza",
+   "duracion": "70",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga. Acondicionamiento: Dos estaciones a la vez: A en la primera, B en la segunda; al terminar los dos, cambiáis. Cada uno hace todas las rondas completas: wall balls / sled push, después sled pull / farmers.",
+   "diaTxt": "Viernes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 2,
+    "dia": 3
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Estiramiento de psoas en rodilla",
+       "video": "",
+       "reps": "30 s/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "Con alcance por encima de la cabeza",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo con banda",
+       "video": "",
+       "reps": "12",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Sin carga",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Plancha con toque de hombro",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Fuerza 1",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Sentadilla frontal",
+       "video": "",
+       "reps": "5",
+       "rpe": "7,5",
+       "desc": "150 s",
+       "notas": "",
+       "series": 4
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Hip thrust",
+       "video": "",
+       "reps": "8",
+       "rpe": "7,5",
+       "desc": "2'",
+       "notas": "Con barra",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 2",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6-8",
+       "rpe": "7,5",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 4
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press de hombro con mancuernas",
+       "video": "",
+       "reps": "8",
+       "rpe": "7,5",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Acondicionamiento",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "20",
+       "rpe": "7,5",
+       "desc": "90 s entre rondas",
+       "notas": "4 rondas seguidas",
+       "series": 4
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "Sled push peso +",
+       "series": 4
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "Sled pull peso competición",
+       "series": 4
+      },
+      {
+       "id": "i4_3",
+       "nombre": "Paseo del granjero",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "2 × 24 kg",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s2d4",
+   "fecha": "2026-11-15",
+   "titulo": "Hyrox · Hyrox mixto: primera mitad",
+   "subtitulo": "Hyrox 13 dic · Semana 2 · Acumulación 2 · en pareja",
+   "deporte": "otro",
+   "duracion": "65",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Bloque principal: Relevo: A corre mientras B hace la estación; al llegar A, cambio. Cada uno completa todas las carreras y estaciones. Alternad quién empieza cada ronda. Mantened 4:50-5:00/km en cada km.",
+   "diaTxt": "Domingo",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 2,
+    "dia": 4
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Cat-camel",
+       "video": "",
+       "reps": "8",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Movilidad de tobillo a pared",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo a una pierna",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "15 m",
+       "rpe": "5",
+       "desc": "",
+       "notas": "Sled push suave",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Bloque principal",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Carrera 1 km + SkiErg",
+       "video": "",
+       "reps": "1000 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Encadenado sin parar · carrera 4:50-5:00/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Carrera 1 km + sled push",
+       "video": "",
+       "reps": "50 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Peso competición",
+       "series": 1
+      },
+      {
+       "id": "i2_2",
+       "nombre": "Carrera 1 km + sled pull",
+       "video": "",
+       "reps": "50 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Peso competición",
+       "series": 1
+      },
+      {
+       "id": "i2_3",
+       "nombre": "Carrera 1 km + burpee broad jumps",
+       "video": "",
+       "reps": "40 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_4",
+       "nombre": "Carrera 1 km + remo",
+       "video": "",
+       "reps": "1000 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "~40 min en total",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Complementario",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Plancha con elevación de pierna",
+       "video": "",
+       "reps": "20 s/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "Plancha lateral",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s3d1",
+   "fecha": "2026-11-16",
+   "titulo": "Hyrox · Aeróbico + tren superior",
+   "subtitulo": "Hyrox 13 dic · Semana 3 · Intensificación · en pareja",
+   "deporte": "fuerza",
+   "duracion": "55",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Rodaje juntos a ritmo de conversación; los progresivos, lado a lado. Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga.",
+   "diaTxt": "Lunes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 3,
+    "dia": 1
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "World's greatest stretch",
+       "video": "",
+       "reps": "5/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "40 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "5:20-5:45/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Progresivos 100 m",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "6",
+       "desc": "Vuelta andando",
+       "notas": "Hasta ritmo Hyrox",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 1",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6-8",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press de hombro con mancuernas",
+       "video": "",
+       "reps": "8-10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Remo invertido",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Superserie con flexiones",
+       "series": 3
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Flexiones",
+       "video": "",
+       "reps": "12",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "",
+       "series": 3
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s3d2",
+   "fecha": "2026-11-18",
+   "titulo": "Hyrox · Carrera + ergos",
+   "subtitulo": "Hyrox 13 dic · Semana 3 · Intensificación · en pareja",
+   "deporte": "carrera",
+   "duracion": "60",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Salís juntos en cada serie, cada uno a su ritmo; el más rápido espera trotando y empezáis la recuperación a la vez. Acondicionamiento: Un ergo para los dos: por turnos, la serie de tu pareja es tu descanso (el que espera, trote suave o plancha).",
+   "diaTxt": "Miércoles",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 3,
+    "dia": 2
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "World's greatest stretch",
+       "video": "",
+       "reps": "5/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Pogo jumps",
+       "video": "",
+       "reps": "15",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Plancha lateral",
+       "video": "",
+       "reps": "25 s/lado",
+       "rpe": "5",
+       "desc": "20 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 6,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 4 progresivos de 80 m",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Series 800 m",
+       "video": "",
+       "reps": "800 m",
+       "rpe": "8,5",
+       "desc": "90 s trotando",
+       "notas": "4:05/km",
+       "series": 6
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "SkiErg",
+       "video": "",
+       "reps": "250 m",
+       "rpe": "8,5",
+       "desc": "1'",
+       "notas": "Fuerte",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s3d3",
+   "fecha": "2026-11-20",
+   "titulo": "Hyrox · Fuerza + estaciones",
+   "subtitulo": "Hyrox 13 dic · Semana 3 · Intensificación · en pareja",
+   "deporte": "fuerza",
+   "duracion": "70",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga. Acondicionamiento: Corréis juntos el 400 m; después A hace lunges y B wall balls, y cambiáis antes del siguiente 400 m.",
+   "diaTxt": "Viernes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 3,
+    "dia": 3
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Movilidad de tobillo a pared",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo a una pierna",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Saltos al cajón",
+       "video": "",
+       "reps": "3",
+       "rpe": "6",
+       "desc": "45 s",
+       "notas": "Explosivo",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Fuerza 1",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Sentadilla trasera",
+       "video": "",
+       "reps": "3",
+       "rpe": "8",
+       "desc": "3'",
+       "notas": "",
+       "series": 4
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Peso muerto con barra hexagonal",
+       "video": "",
+       "reps": "4",
+       "rpe": "8",
+       "desc": "150 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Sentadilla búlgara",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "8",
+       "desc": "90 s",
+       "notas": "Mancuernas · superserie con remo",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Remo con barra",
+       "video": "",
+       "reps": "8",
+       "rpe": "8",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Acondicionamiento",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Series 400 m",
+       "video": "",
+       "reps": "400 m",
+       "rpe": "8",
+       "desc": "2' entre rondas",
+       "notas": "Ritmo competición + estaciones",
+       "series": 3
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Zancada caminando",
+       "video": "",
+       "reps": "50 m",
+       "rpe": "8",
+       "desc": "",
+       "notas": "Sandbag 20 kg",
+       "series": 3
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "30",
+       "rpe": "8",
+       "desc": "",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s3d4",
+   "fecha": "2026-11-22",
+   "titulo": "Hyrox · Hyrox mixto: segunda mitad",
+   "subtitulo": "Hyrox 13 dic · Semana 3 · Intensificación · en pareja",
+   "deporte": "otro",
+   "duracion": "55",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Pre-fatiga: Juntos: 2 km lado a lado y burpee broad jumps a la vez. Bloque principal: Relevo: A corre mientras B hace la estación; al llegar A, cambio. Cada uno completa todas las carreras y estaciones. Alternad quién empieza cada ronda.",
+   "diaTxt": "Domingo",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 3,
+    "dia": 4
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Cat-camel",
+       "video": "",
+       "reps": "8",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Sentadilla profunda con apoyo",
+       "video": "",
+       "reps": "30 s",
+       "rpe": "",
+       "desc": "",
+       "notas": "Abriendo rodillas con los codos",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Monster walk con banda",
+       "video": "",
+       "reps": "10 pasos/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "",
+       "notas": "Técnicos",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Pre-fatiga",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Tempo run",
+       "video": "",
+       "reps": "2 km",
+       "rpe": "7",
+       "desc": "",
+       "notas": "4:50/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Burpees",
+       "video": "",
+       "reps": "20",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Burpee broad jumps",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Bloque principal",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Carrera 1 km + remo",
+       "video": "",
+       "reps": "1000 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "Encadenado sin parar · carrera 4:50/km",
+       "series": 1
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Carrera 1 km + farmers carry",
+       "video": "",
+       "reps": "200 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "2 × 24 kg",
+       "series": 1
+      },
+      {
+       "id": "i3_2",
+       "nombre": "Carrera 1 km + sandbag lunges",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "20 kg",
+       "series": 1
+      },
+      {
+       "id": "i3_3",
+       "nombre": "Carrera 1 km + wall balls",
+       "video": "",
+       "reps": "100",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "Apunta parciales de cada km y estación",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s4d1",
+   "fecha": "2026-11-23",
+   "titulo": "Hyrox · Aeróbico + tren superior",
+   "subtitulo": "Hyrox 13 dic · Semana 4 · Pico · en pareja",
+   "deporte": "fuerza",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Rodaje juntos a ritmo de conversación; los progresivos, lado a lado. Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga.",
+   "diaTxt": "Lunes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 4,
+    "dia": 1
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "35 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "5:20-5:45/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Progresivos 100 m",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "6",
+       "desc": "Vuelta andando",
+       "notas": "Hasta ritmo Hyrox",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 1",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6-8",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press de hombro con mancuernas",
+       "video": "",
+       "reps": "8-10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Remo invertido",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Superserie con flexiones",
+       "series": 3
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Flexiones",
+       "video": "",
+       "reps": "12",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "",
+       "series": 3
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s4d2",
+   "fecha": "2026-11-25",
+   "titulo": "Hyrox · Carrera + ergos",
+   "subtitulo": "Hyrox 13 dic · Semana 4 · Pico · en pareja",
+   "deporte": "carrera",
+   "duracion": "55",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Salís juntos en cada serie, cada uno a su ritmo; el más rápido espera trotando y empezáis la recuperación a la vez. Acondicionamiento: A rema mientras B hace SkiErg; descanso y cambio de máquina.",
+   "diaTxt": "Miércoles",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 4,
+    "dia": 2
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "World's greatest stretch",
+       "video": "",
+       "reps": "5/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Balanceo de piernas frontal",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "Y lateral",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Elevación de talones",
+       "video": "",
+       "reps": "12/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "A una pierna",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 4 progresivos de 80 m",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Tempo run",
+       "video": "",
+       "reps": "3 km",
+       "rpe": "8",
+       "desc": "3' trotando",
+       "notas": "4:25/km",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Intervalos en remo ergómetro",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "2'",
+       "notas": "Ritmo competición · alterna con SkiErg",
+       "series": 2
+      },
+      {
+       "id": "i3_1",
+       "nombre": "SkiErg",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "2'",
+       "notas": "Ritmo competición",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s4d3",
+   "fecha": "2026-11-27",
+   "titulo": "Hyrox · Fuerza + estaciones (corta)",
+   "subtitulo": "Hyrox 13 dic · Semana 4 · Pico · en pareja",
+   "deporte": "fuerza",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga. Acondicionamiento: Dos estaciones a la vez: A en la primera, B en la segunda; al terminar los dos, cambiáis. Cada uno hace todas las rondas completas: sled push / sled pull, después wall balls los dos a la vez.",
+   "diaTxt": "Viernes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 4,
+    "dia": 3
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Estiramiento de psoas en rodilla",
+       "video": "",
+       "reps": "30 s/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "Con alcance por encima de la cabeza",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo con banda",
+       "video": "",
+       "reps": "12",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Sin carga",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Plancha con toque de hombro",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Fuerza 1",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Sentadilla trasera",
+       "video": "",
+       "reps": "3",
+       "rpe": "7,5",
+       "desc": "3'",
+       "notas": "",
+       "series": 3
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Hip thrust",
+       "video": "",
+       "reps": "6",
+       "rpe": "7,5",
+       "desc": "2'",
+       "notas": "Con barra",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 2",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6",
+       "rpe": "7,5",
+       "desc": "90 s",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Acondicionamiento",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7,5",
+       "desc": "2' entre rondas",
+       "notas": "Sled push peso + · 2 rondas",
+       "series": 2
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "Sled pull peso +",
+       "series": 2
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "25",
+       "rpe": "7,5",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s4d4",
+   "fecha": "2026-11-29",
+   "titulo": "Hyrox · Simulación Hyrox completa",
+   "subtitulo": "Hyrox 13 dic · Semana 4 · Pico · en pareja",
+   "deporte": "otro",
+   "duracion": "90",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Simulación: Cada uno hace la simulación completa. Salida escalonada: B sale 4 min después de A para no coincidir en trineos y ergos. Anotad los parciales del otro.",
+   "diaTxt": "Domingo",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 4,
+    "dia": 4
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Cat-camel",
+       "video": "",
+       "reps": "8",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Movilidad de tobillo a pared",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo a una pierna",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 3 progresivos, 5 wall balls y 3 burpee broad jumps",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Simulación",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Carrera 1 km + SkiErg 1000 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "Orden y pesos de competición, sin pausas · carrera 4:50/km",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Carrera 1 km + sled push 50 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_2",
+       "nombre": "Carrera 1 km + sled pull 50 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_3",
+       "nombre": "Carrera 1 km + burpee broad jumps 80 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_4",
+       "nombre": "Carrera 1 km + remo 1000 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_5",
+       "nombre": "Carrera 1 km + farmers carry 200 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_6",
+       "nombre": "Carrera 1 km + sandbag lunges 100 m",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_7",
+       "nombre": "Carrera 1 km + wall balls 100",
+       "video": "",
+       "reps": "",
+       "rpe": "9",
+       "desc": "",
+       "notas": "Prueba desayuno, zapatillas, guantes y gel · apunta los 16 parciales",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Trote o bici suave + estiramientos",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s5d1",
+   "fecha": "2026-11-30",
+   "titulo": "Hyrox · Recuperación aeróbica + tren superior",
+   "subtitulo": "Hyrox 13 dic · Semana 5 · Realización · en pareja",
+   "deporte": "fuerza",
+   "duracion": "45",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Rodaje juntos muy suave. Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga.",
+   "diaTxt": "Lunes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 5,
+    "dia": 1
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Activación escapular en cuadrupedia",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "30 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "5:20-5:45/km",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Fuerza 1",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Dominadas",
+       "video": "",
+       "reps": "6-8",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Superserie con press",
+       "series": 2
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Press de hombro con mancuernas",
+       "video": "",
+       "reps": "8-10",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Fuerza 2",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Remo invertido",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "Superserie con flexiones",
+       "series": 2
+      },
+      {
+       "id": "i4_1",
+       "nombre": "Flexiones",
+       "video": "",
+       "reps": "12",
+       "rpe": "7",
+       "desc": "1'",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i4_2",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b5",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i5_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s5d2",
+   "fecha": "2026-12-02",
+   "titulo": "Hyrox · Carrera + ergos",
+   "subtitulo": "Hyrox 13 dic · Semana 5 · Realización · en pareja",
+   "deporte": "carrera",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Salís juntos en cada serie, cada uno a su ritmo; el más rápido espera trotando y empezáis la recuperación a la vez. Acondicionamiento: Un ergo para los dos: por turnos, la serie de tu pareja es tu descanso (el que espera, trote suave o plancha).",
+   "diaTxt": "Miércoles",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 5,
+    "dia": 2
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "World's greatest stretch",
+       "video": "",
+       "reps": "5/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Apertura torácica en cuadrupedia",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Pogo jumps",
+       "video": "",
+       "reps": "15",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Plancha lateral",
+       "video": "",
+       "reps": "25 s/lado",
+       "rpe": "5",
+       "desc": "20 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 4 progresivos de 80 m",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Series 1.000 m",
+       "video": "",
+       "reps": "1 km",
+       "rpe": "8,5",
+       "desc": "2' trotando",
+       "notas": "4:10/km",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "SkiErg",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Ritmo competición",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s5d3",
+   "fecha": "2026-12-04",
+   "titulo": "Hyrox · Fuerza + estaciones",
+   "subtitulo": "Hyrox 13 dic · Semana 5 · Realización · en pareja",
+   "deporte": "fuerza",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga. Acondicionamiento: Dos estaciones a la vez: A en la primera, B en la segunda; al terminar los dos, cambiáis. Cada uno hace todas las rondas completas: wall balls / sled push, después sled pull los dos por turnos.",
+   "diaTxt": "Viernes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 5,
+    "dia": 3
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Movilidad de tobillo a pared",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo a una pierna",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Fuerza 1",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Sentadilla trasera",
+       "video": "",
+       "reps": "3",
+       "rpe": "7",
+       "desc": "3'",
+       "notas": "",
+       "series": 3
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Peso muerto rumano",
+       "video": "",
+       "reps": "6",
+       "rpe": "7",
+       "desc": "2'",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "15",
+       "rpe": "7",
+       "desc": "2' entre rondas",
+       "notas": "3 rondas seguidas",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Sled push peso competición",
+       "series": 3
+      },
+      {
+       "id": "i3_2",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "25 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Sled pull peso competición",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s5d4",
+   "fecha": "2026-12-06",
+   "titulo": "Hyrox · Hyrox mixto",
+   "subtitulo": "Hyrox 13 dic · Semana 5 · Realización · en pareja",
+   "deporte": "otro",
+   "duracion": "50",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Bloque principal: Relevo: A corre mientras B hace la estación; al llegar A, cambio. Cada uno completa todas las carreras y estaciones. Alternad quién empieza cada ronda. Aquí la carrera es de 1 km a 4:45-4:50/km.",
+   "diaTxt": "Domingo",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 5,
+    "dia": 4
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Cat-camel",
+       "video": "",
+       "reps": "8",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Sentadilla profunda con apoyo",
+       "video": "",
+       "reps": "30 s",
+       "rpe": "",
+       "desc": "",
+       "notas": "Abriendo rodillas con los codos",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Monster walk con banda",
+       "video": "",
+       "reps": "10 pasos/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "10",
+       "rpe": "5",
+       "desc": "",
+       "notas": "Técnicos",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Bloque principal",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Series 1.000 m",
+       "video": "",
+       "reps": "1 km",
+       "rpe": "7",
+       "desc": "1' entre rondas",
+       "notas": "4:45-4:50/km + estación",
+       "series": 4
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Paseo del granjero",
+       "video": "",
+       "reps": "100 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 1 · 2 × 24 kg",
+       "series": 1
+      },
+      {
+       "id": "i2_2",
+       "nombre": "Zancada caminando",
+       "video": "",
+       "reps": "50 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 2 · sandbag 20 kg",
+       "series": 1
+      },
+      {
+       "id": "i2_3",
+       "nombre": "Intervalos en remo ergómetro",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 3",
+       "series": 1
+      },
+      {
+       "id": "i2_4",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "50",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ronda 4",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Complementario",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Pallof press",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s6d1",
+   "fecha": "2026-12-07",
+   "titulo": "Hyrox · Recordatorio de ritmos",
+   "subtitulo": "Hyrox 13 dic · Semana 6 · Taper · en pareja",
+   "deporte": "carrera",
+   "duracion": "45",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Salís juntos en cada serie, cada uno a su ritmo; el más rápido espera trotando y empezáis la recuperación a la vez. Acondicionamiento: Por turnos: mientras uno hace la ronda, el otro la observa y corrige técnica.",
+   "diaTxt": "Lunes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 6,
+    "dia": 1
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Estiramiento de psoas en rodilla",
+       "video": "",
+       "reps": "30 s/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "Con alcance por encima de la cabeza",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "Vuelta andando",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Elevación de talones",
+       "video": "",
+       "reps": "12/lado",
+       "rpe": "6",
+       "desc": "30 s",
+       "notas": "A una pierna",
+       "series": 2
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 4,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "15 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i2_1",
+       "nombre": "Series 400 m",
+       "video": "",
+       "reps": "400 m",
+       "rpe": "8",
+       "desc": "90 s trotando",
+       "notas": "4:00/km",
+       "series": 4
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "SkiErg",
+       "video": "",
+       "reps": "250 m",
+       "rpe": "7",
+       "desc": "2' entre rondas",
+       "notas": "Ritmo competición, sin apurar",
+       "series": 2
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Arrastre de trineo",
+       "video": "",
+       "reps": "15 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Push + pull",
+       "series": 2
+      },
+      {
+       "id": "i3_2",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "10",
+       "rpe": "7",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s6d2",
+   "fecha": "2026-12-09",
+   "titulo": "Hyrox · Fuerza ligera + ritmo",
+   "subtitulo": "Hyrox 13 dic · Semana 6 · Taper · en pareja",
+   "deporte": "fuerza",
+   "duracion": "40",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Fuerza: series alternas, la serie de tu pareja es tu descanso; cada uno con su carga. Acondicionamiento: Corréis juntos los 500 m; luego remáis por turnos (el que espera, plancha).",
+   "diaTxt": "Miércoles",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 6,
+    "dia": 2
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Cat-camel",
+       "video": "",
+       "reps": "8",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Movilidad de tobillo a pared",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Dead bug",
+       "video": "",
+       "reps": "8/lado",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "",
+       "series": 2
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Face pull",
+       "video": "",
+       "reps": "15",
+       "rpe": "5",
+       "desc": "30 s",
+       "notas": "Con banda",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Fuerza 1",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Sentadilla trasera",
+       "video": "",
+       "reps": "3",
+       "rpe": "6",
+       "desc": "150 s",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Acondicionamiento",
+     "series": 3,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Series 400 m",
+       "video": "",
+       "reps": "500 m",
+       "rpe": "7",
+       "desc": "90 s",
+       "notas": "Carrera + 250 m remo · ritmo competición",
+       "series": 3
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Intervalos en remo ergómetro",
+       "video": "",
+       "reps": "250 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "",
+       "series": 3
+      }
+     ]
+    },
+    {
+     "id": "b4",
+     "nombre": "Vuelta a la calma",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i4_0",
+       "nombre": "Trote o bici suave + respiración",
+       "video": "",
+       "reps": "5 min",
+       "rpe": "3",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s6d3",
+   "fecha": "2026-12-11",
+   "titulo": "Hyrox · Activación precompetición",
+   "subtitulo": "Hyrox 13 dic · Semana 6 · Taper · en pareja",
+   "deporte": "carrera",
+   "duracion": "25",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Carrera: Rodaje juntos, suelto.",
+   "diaTxt": "Viernes",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 6,
+    "dia": 3
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "Movilidad de cadera 90/90",
+       "video": "",
+       "reps": "6/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Estiramiento de psoas en rodilla",
+       "video": "",
+       "reps": "30 s/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 2,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Monster walk con banda",
+       "video": "",
+       "reps": "10 pasos/lado",
+       "rpe": "5",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Técnica A-skip",
+       "video": "",
+       "reps": "20 m",
+       "rpe": "5",
+       "desc": "",
+       "notas": "",
+       "series": 2
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "15 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 4 progresivos de 80 m · sábado 12 descanso total",
+       "series": 1
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tipo": "sesion",
+  "doc": {
+   "id": "hyx-dl-s6d4",
+   "fecha": "2026-12-13",
+   "titulo": "Hyrox · COMPETICIÓN HYROX",
+   "subtitulo": "Hyrox 13 dic · Semana 6 · Taper · en pareja",
+   "deporte": "otro",
+   "duracion": "90",
+   "rpeObj": "",
+   "notas": "En pareja (A y B). Competición: Plan individual. Si competís juntos en Doubles, el reparto de estaciones cambia: avisa y lo ajusto.",
+   "diaTxt": "Domingo",
+   "plan": {
+    "id": "hyrox-13-dic",
+    "semana": 6,
+    "dia": 4
+   },
+   "bloques": [
+    {
+     "id": "b0",
+     "nombre": "Movilidad",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i0_0",
+       "nombre": "World's greatest stretch",
+       "video": "",
+       "reps": "5/lado",
+       "rpe": "",
+       "desc": "",
+       "notas": "Empieza 30-35 min antes de tu salida",
+       "series": 1
+      },
+      {
+       "id": "i0_1",
+       "nombre": "Sentadilla profunda con apoyo",
+       "video": "",
+       "reps": "30 s",
+       "rpe": "",
+       "desc": "",
+       "notas": "Sin carga",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b1",
+     "nombre": "Activación",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i1_0",
+       "nombre": "Puente de glúteo a una pierna",
+       "video": "",
+       "reps": "10/lado",
+       "rpe": "5",
+       "desc": "",
+       "notas": "",
+       "series": 1
+      },
+      {
+       "id": "i1_1",
+       "nombre": "Pogo jumps",
+       "video": "",
+       "reps": "10",
+       "rpe": "6",
+       "desc": "",
+       "notas": "Tras 2 × 20 m de A-skip",
+       "series": 1
+      },
+      {
+       "id": "i1_2",
+       "nombre": "Burpees",
+       "video": "",
+       "reps": "3",
+       "rpe": "6",
+       "desc": "",
+       "notas": "Broad jumps + 10 air squats",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b2",
+     "nombre": "Carrera",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i2_0",
+       "nombre": "Rodaje continuo suave",
+       "video": "",
+       "reps": "10 min",
+       "rpe": "4",
+       "desc": "",
+       "notas": "+ 3 progresivos hasta ritmo Hyrox",
+       "series": 1
+      }
+     ]
+    },
+    {
+     "id": "b3",
+     "nombre": "Competición",
+     "series": 1,
+     "tiempo": "",
+     "items": [
+      {
+       "id": "i3_0",
+       "nombre": "Km 1-2",
+       "video": "",
+       "reps": "1 km",
+       "rpe": "7",
+       "desc": "",
+       "notas": "4:55-5:00/km: no salgas a ritmo de 12 km"
+      },
+      {
+       "id": "i3_1",
+       "nombre": "Km 3-6",
+       "video": "",
+       "reps": "1 km",
+       "rpe": "8",
+       "desc": "",
+       "notas": "4:45-4:55/km si vas bien"
+      },
+      {
+       "id": "i3_2",
+       "nombre": "Km 7-8",
+       "video": "",
+       "reps": "1 km",
+       "rpe": "9",
+       "desc": "",
+       "notas": "Lo que quede"
+      },
+      {
+       "id": "i3_3",
+       "nombre": "SkiErg y remo",
+       "video": "",
+       "reps": "1000 m",
+       "rpe": "7",
+       "desc": "",
+       "notas": "Ritmo constante, nunca a tope"
+      },
+      {
+       "id": "i3_4",
+       "nombre": "Sled push y pull",
+       "video": "",
+       "reps": "50 m",
+       "rpe": "8",
+       "desc": "",
+       "notas": "Pasos cortos, sin pararte"
+      },
+      {
+       "id": "i3_5",
+       "nombre": "Wall balls",
+       "video": "",
+       "reps": "100",
+       "rpe": "9",
+       "desc": "",
+       "notas": "Bloques 20-15-15-10-10-10-10-10, pausas de 3-4 respiraciones"
+      }
+     ]
+    }
+   ]
+  }
+ }
+]
