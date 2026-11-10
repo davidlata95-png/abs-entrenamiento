@@ -1381,7 +1381,7 @@ function verSesion(s, quienId) {
           ${s.deporte !== 'fuerza' && r.hecho?.[`${bi}|${ii}`] ? `<span class="chk" aria-pressed="true" aria-label="Hecho">${CHECK}</span>` : ''}</div>${body}</article>`;
         if (s.deporte !== 'fuerza') return art;
         const n = nSeries(b, it), x = [n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : ' × ' + (it.reps || '—')), it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'desc. ' + it.desc].filter(Boolean);
-        return `<details class="exd"><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}</span><span class="exm ${com || it.notas ? 'on' : ''}" aria-label="${com ? 'Tiene comentario' : 'Sin comentario'}">${ICO_H.nota}</span></summary>${art}</details>`;
+        return `<details class="exd"><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}</span>${com ? `<span class="exm on" aria-label="Tiene comentario">${ICO_H.nota}</span>` : ''}</summary>${art}</details>`;
       }).join('')}</section>`).join('')}`;
   abrirEd(s.titulo || DEP[s.deporte]?.n || 'Sesión', html, () => { setTimeout(() => editSesion(s), 0); }, 'Editar');
   document.querySelectorAll('[data-vq]').forEach(b => b.onclick = () => verSesion(s, b.dataset.vq));
@@ -2364,15 +2364,15 @@ function itemResumen(s, b, bi, ii, it, r) {
   const x = [n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : ' × ' + (it.reps || '—')), it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'desc. ' + it.desc].filter(Boolean);
   const k = `${s.id}|${bi}|${ii}`, abierto = S.ui.exAb?.has(k);
   // Comentario del ejercicio (indicaciones del entrenador o lo que escribió el deportista): icono amarillo si hay; al tocarlo se ve
-  const com = r.coment?.[`${bi}|${ii}`] || '', hay = !!(it.notas || com), verC = S.ui.hCom?.has(k);
-  const panel = verC ? `<div class="exmc">${it.notas ? `<p><b>Indicaciones:</b> ${esc(it.notas)}</p>` : ''}<textarea class="com" data-com="${k}" rows="2" placeholder="Escribe un comentario para tu entrenador">${esc(com)}</textarea></div>` : '';
-  return `<div class="exw"><details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span><button type="button" class="exm ${hay ? 'on' : ''}" data-hx="hCom|${k}" aria-pressed="${!!verC}" aria-label="${hay ? 'Ver comentario' : 'Escribir comentario'}">${ICO_H.nota}</button><button type="button" class="chk exk" data-hcomp="${k}" aria-pressed="${ok === n && n > 0}" aria-label="Realizado: ${esc(it.nombre || '')}">${CHECK}</button></summary>${itemDep(s, b, bi, ii, it, r)}</details>${panel}</div>`;
+  const com = r.coment?.[`${bi}|${ii}`] || '', verC = S.ui.hCom?.has(k);
+  const panel = com && verC ? `<div class="exmc"><p>${esc(com)}</p></div>` : '';
+  return `<div class="exw"><details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span>${com ? `<button type="button" class="exm on" data-hx="hCom|${k}" aria-pressed="${!!verC}" aria-label="Ver comentario">${ICO_H.nota}</button>` : ''}<button type="button" class="chk exk" data-hcomp="${k}" aria-pressed="${ok === n && n > 0}" aria-label="Realizado: ${esc(it.nombre || '')}">${CHECK}</button></summary>${itemDep(s, b, bi, ii, it, r)}</details>${panel}</div>`;
 }
 /* Gimnasio como en Train2Go: la sesión en una hoja, cada parte con su título y cada ejercicio en una línea
    (series × reps · RPE · descanso) con su casilla de «Realizado». Al tocar el ejercicio se abre el detalle
    (vídeo, indicaciones y la tabla para apuntar los kilos). Abajo, «Marcar sesión como realizada». */
 function gymDoc(s, r, tot, hech) {
-  return `<section class="card swdoc gym">${(s.bloques || []).filter(b => (b.items || []).length).map(b => { const bi = s.bloques.indexOf(b); return `<h4>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}${(b.items || []).map((it, ii) => itemResumen(s, b, bi, ii, it, r)).join('')}`; }).join('')}
+  return `<section class="card swdoc gym">${(s.bloques || []).filter(b => (b.items || []).length).map((b, nb) => { const bi = s.bloques.indexOf(b); return `<div class="gblk" data-n="${nb % 6}"><h4>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}${(b.items || []).map((it, ii) => itemResumen(s, b, bi, ii, it, r)).join('')}</div>`; }).join('')}
     <button type="button" class="btn ${tot && hech === tot ? 'ok' : 'pri'} gymok" data-hall="${s.id}">${CHECK} ${tot && hech === tot ? 'Sesión realizada' : 'Marcar sesión como realizada'}</button></section>`;
 }
 function itemDep(s, b, bi, ii, it, r) {

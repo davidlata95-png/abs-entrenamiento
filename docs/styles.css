@@ -517,13 +517,12 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 /* Comentario del ejercicio: icono amarillo si hay, gris si no; al tocarlo se ve */
 .swdoc.gym .exd>summary{grid-template-columns:1fr auto auto}
 .swdoc.gym .exk{grid-column:3}
-.exm{grid-column:2;grid-row:1/3;align-self:center;border:0;background:none;padding:6px;color:#b9bfc4;cursor:pointer;display:grid;place-items:center}
-.exm svg{width:22px;height:22px}
+.exm{grid-column:2;grid-row:1/3;align-self:center;border:0;background:none;padding:4px;color:#b9bfc4;cursor:pointer;display:grid;place-items:center}
+.exm svg{width:18px;height:18px}
 .exm.on{color:#e6a800}.exm.on svg{fill:#ffd21f;stroke:#c48f00}
 .exm[aria-pressed="true"]{background:var(--card2);border-radius:8px}
 .exd>summary .exm{grid-column:2}
 .exmc{background:#fff8d6;border:1px solid #f3df8a;border-radius:10px;padding:10px 12px;margin:0 0 10px;display:flex;flex-direction:column;gap:8px;font-size:14px;color:#3a3200}
 .exmc p{margin:0}
 .exmc .com{background:#fff;margin:0}
-.swdoc.gym .exd>.ex .cue,.swdoc.gym .exd>.ex .com{display:none}
 .exd>summary{grid-template-columns:1fr auto auto}.exd>summary::after{grid-column:3}
