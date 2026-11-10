@@ -1376,9 +1376,12 @@ function verSesion(s, quienId) {
         else if (it.filas?.length) body += txtHTML(it.filas.map(f => txtFila(f, s.deporte)).join('\n'), s.deporte);
         if (s.deporte === 'fuerza') { const n = nSeries(b, it); body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td class="kg mono">${x.kg ? esc(x.kg) + ' kg' : '<span class="muted">—</span>'}</td><td class="c">${x.ok ? `<span class="chk" aria-pressed="true" aria-label="Hecha">${CHECK}</span>` : ''}</td></tr>`; }).join('')}</tbody></table>`; }
         if (com) body += `<p class="bubble">${esc(com)}</p>`;
-        return `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${tk.tit}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
+        const art = `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${tk.tit}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
           ${v ? `<button type="button" class="thumb" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
           ${s.deporte !== 'fuerza' && r.hecho?.[`${bi}|${ii}`] ? `<span class="chk" aria-pressed="true" aria-label="Hecho">${CHECK}</span>` : ''}</div>${body}</article>`;
+        if (s.deporte !== 'fuerza') return art;
+        const n = nSeries(b, it), x = [n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : ' × ' + (it.reps || '—')), it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'desc. ' + it.desc].filter(Boolean);
+        return `<details class="exd"><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${com ? ' · 💬' : ''}</span></summary>${art}</details>`;
       }).join('')}</section>`).join('')}`;
   abrirEd(s.titulo || DEP[s.deporte]?.n || 'Sesión', html, () => { setTimeout(() => editSesion(s), 0); }, 'Editar');
   document.querySelectorAll('[data-vq]').forEach(b => b.onclick = () => verSesion(s, b.dataset.vq));
@@ -2219,7 +2222,7 @@ function sesionCompacta(s) {
   // Cada bloque con su nombre y debajo sus ejercicios
   const items = (s.bloques || []).filter(b => (b.items || []).length).map((b, bi0) => { const bi = s.bloques.indexOf(b); return `<div class="wpblk"><div class="wpbh">${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.circuito ? ' · ↻ circuito' : ''}</div>${(b.items || []).map((it, ii) => itemCompacto(s, b, bi, ii, it, r)).join('')}</div>`; });
   return `<div class="wpses" style="--c:${c}"><div class="wpsh"><i></i><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b>${s.duracion ? `<small>${s.duracion}'</small>` : ''}${conEcos(s.deporte) && ecoDe(s) ? `<small class="mono">${ecoTxt(ecoDe(s))}</small>` : ''}${pct ? `<small class="wpok">${pct}%</small>` : ''}</div>
-    <div class="wpitems">${items.join('')}</div></div>`;
+    ${esNatDoc(s) ? `<button class="wpex wpdoc" data-wpex="1">${natDoc(s, true)}</button>` : `<div class="wpitems">${items.join('')}</div>`}</div>`;
 }
 function itemCompacto(s, b, bi, ii, it, r) {
   const chips = [];
@@ -2269,7 +2272,7 @@ function respuestasNuevas() {
    tarea con viñetas, la intensidad en español con su % y en su color, y los kilómetros al final */
 const SEC_ES = [[/^\s*(?:warm[\s-]*up|calentamiento)\b/i, 'Calentamiento'], [/^\s*(?:main[\s-]*set|serie principal|parte principal)\b/i, 'Serie principal'], [/^\s*(?:warm[\s-]*down|cool[\s-]*down|swim[\s-]*down|vuelta a la calma)\b/i, 'Vuelta a la calma'], [/^\s*pre[\s-]*set\b/i, 'Pre-serie']];
 const esNatDoc = s => s?.deporte === 'natacion' && (s.bloques || []).some(b => (b.items || []).some(it => it.texto));
-function natDoc(s) {
+function natDoc(s, mini) {
   const ln = x => lineaHTML(x.charAt(0).toUpperCase() + x.slice(1), 'natacion', 'color');
   const tarea = it => {
     const ls = String(it.texto || '').replace(/\r/g, '').split('\n'), out = [];
@@ -2288,8 +2291,8 @@ function natDoc(s) {
     return `<div class="swt ${grupo ? 'grp' : ''}">${out.join('')}</div>`;
   };
   const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
-  return `<section class="card swdoc">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre || ''))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${(b.items || []).map(it => it.texto ? tarea(it) : `<div class="swt"><p>${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p></div>`).join('')}`).join('')}
-    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${leyendaNat()}</section>`;
+  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre || ''))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${(b.items || []).map(it => it.texto ? tarea(it) : `<div class="swt"><p>${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p></div>`).join('')}`).join('')}
+    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : leyendaNat()}</section>`;
 }
 function sesionDep(s) {
   const r = regDe(s) || {}, c = DEP[s.deporte]?.c, g = s.grupo && byId('grupo', s.grupo);
@@ -2299,7 +2302,7 @@ function sesionDep(s) {
     ${tot && !esNatDoc(s) ? `<small class="muted">${hech} de ${tot} hechos</small><div class="progress"><i style="width:${tot ? hech / tot * 100 : 0}%"></i></div>` : ''}</section>
     ${esNatDoc(s) ? natDoc(s) : (s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
       ${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}.</p>` : ''}
-      ${(b.items || []).map((it, ii) => itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
+      ${(b.items || []).map((it, ii) => s.deporte === 'fuerza' ? itemResumen(s, b, bi, ii, it, r) : itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
     <section class="card list" data-fin="${s.id}"><h3>${r.rpe ? 'Sesión registrada' : 'Al terminar la sesión'}</h3>
       <label class="l">Minutos totales<input class="f mono" inputmode="numeric" data-min="${s.id}" value="${esc(r.minutos || s.duracion || '')}"></label>
       <div class="l">¿Cómo de dura ha sido? (RPE 0–10)<div class="rpe">${Array.from({ length: 11 }, (_, i) => `<button type="button" data-rpe="${s.id}|${i}" aria-pressed="${+r.rpe === i && r.rpe !== undefined && r.rpe !== ''}" aria-label="${i}: ${RPE_TXT[i]}">${i}</button>`).join('')}</div><small class="muted" id="rpeT-${s.id}">${r.rpe !== undefined && r.rpe !== '' ? RPE_TXT[+r.rpe] : 'Toca un número'}</small></div>
@@ -2307,6 +2310,14 @@ function sesionDep(s) {
       <textarea class="com" data-nota="${s.id}" placeholder="Comentario general de la sesión (opcional)">${esc(r.nota || '')}</textarea>
       ${realizadoHTML(s, S.yo)}</section>
     <section class="card list"><h3>Mensajes con tu entrenador</h3>${hiloHTML(s, S.yo, r, 'dep')}</section>${(() => { marcarVisto(D.mensaje.filter(m => m.ses === s.id).map(m => m.id)); return ''; })()}`;
+}
+/* Gimnasio: cada ejercicio en una línea (nombre · series × reps · RPE · descanso) y, al tocarlo, se abre con el vídeo,
+   las indicaciones y la tabla para apuntar los kilos */
+function itemResumen(s, b, bi, ii, it, r) {
+  const n = nSeries(b, it), ok = Array.from({ length: n }, (_, k) => !!r.sets?.[`${bi}|${ii}|${k}`]?.ok).filter(Boolean).length;
+  const x = [n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : ' × ' + (it.reps || '—')), it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'desc. ' + it.desc].filter(Boolean);
+  const k = `${s.id}|${bi}|${ii}`, abierto = S.ui.exAb?.has(k);
+  return `<details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}</span><span class="exs">${ok ? `${ok}/${n}` : ''}</span></summary>${itemDep(s, b, bi, ii, it, r)}</details>`;
 }
 function itemDep(s, b, bi, ii, it, r) {
   const v = vidId(it.video), c = DEP[s.deporte]?.c;
@@ -2359,6 +2370,7 @@ function ultimaVez(it, s) {
   return best || mj ? `<span class="last">${best ? `Última vez (${fmtD(parseKey(best.f))}): ${esc(best.kg.join(' · '))} kg` : ''}${best && mj ? ' · ' : ''}${mj ? `Mejor: ${String(mj).replace('.', ',')} kg` : ''}</span>` : '';
 }
 function enlazarSesionDep(m) {
+  m.querySelectorAll('[data-exd]').forEach(d => d.ontoggle = () => { S.ui.exAb = S.ui.exAb || new Set(); d.open ? S.ui.exAb.add(d.dataset.exd) : S.ui.exAb.delete(d.dataset.exd); });
   m.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.v) { abrirVideo.h = !!b.dataset.h; return abrirVideo(b.dataset.v, b.dataset.n, b.dataset.s, b.dataset.e); }
