@@ -86,6 +86,7 @@ const ZN = Object.fromEntries(ZONAS);
 const ZONAS_NAT = [['r0', 'Suave'], ['r1', 'A1'], ['r1p', 'A2'], ['r2', 'A3'], ['r3', 'PAE'], ['r3p', 'R400'], ['r4', 'R200'], ['r5', 'R100'], ['r6', 'Fuerte']];
 const ZNAT_K = { suave: 'r0', a1: 'r1', a2: 'r1p', a3: 'r2', pae: 'r3', r400: 'r3p', r200: 'r4', r100: 'r5', fuerte: 'r6' };
 const ZNAT_DESC = { r0: 'Recuperación', r1: 'Aeróbico suave', r1p: 'Aeróbico medio', r2: 'Aeróbico fuerte', r3: 'Potencia aeróbica', r3p: 'Ritmo de 400', r4: 'Ritmo de 200', r5: 'Ritmo de 100', r6: 'Máxima velocidad' };
+const ZNAT_PCT = { r0: '50-60%', r1: '60-70%', r1p: '70-75%', r2: '75-80%', r3: '80-85%', r3p: '85-90%', r4: '90-95%', r5: '95-98%', r6: '98-100%' };
 const zonasDe = dep => dep === 'natacion' ? ZONAS_NAT : ZONAS;
 const znDe = (dep, z) => (dep === 'natacion' ? Object.fromEntries(ZONAS_NAT) : ZN)[z];
 // Busca en un trozo de texto la intensidad de natación (también acepta R0…R6 de Train2Go)
@@ -97,7 +98,7 @@ function txtHTML(texto, dep) {
   if (dep !== 'natacion') return `<pre class="txt">${esc(texto)}</pre>`;
   const pintar = (seg, z) => {
     if (!z) return esc(seg);
-    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => `${a ?? c ?? ''}<b class="zp" data-z="${b ? ZNAT_K[b.toLowerCase()] : zonaNat(' ' + d) || z}">${b ? znDe('natacion', ZNAT_K[b.toLowerCase()]) : d}</b>`);
+    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => { const zk = b ? ZNAT_K[b.toLowerCase()] : zonaNat(' ' + d) || z; return `${a ?? c ?? ''}<b class="zp" data-z="${zk}">${b ? znDe('natacion', ZNAT_K[b.toLowerCase()]) : d}${ZNAT_PCT[zk] ? ' <span class="zpct">' + ZNAT_PCT[zk] + '</span>' : ''}</b>`; });
     return `<span class="zt" data-z="${z}">${marcado}</span>`;
   };
   const lineas = String(texto || '').split('\n').map(l => {
@@ -146,7 +147,7 @@ function mainSet(t) {
   while (res.length && res.at(-1) === '') res.pop();
   return res.join('\n');
 }
-const leyendaNat = () => `<details class="zley"><summary>Intensidades</summary><div>${ZONAS_NAT.map(([k, n]) => `<span><b class="zp" data-z="${k}">${n}</b> ${ZNAT_DESC[k]}</span>`).join('')}</div></details>`;
+const leyendaNat = () => `<details class="zley"><summary>Intensidades</summary><div>${ZONAS_NAT.map(([k, n]) => `<span><b class="zp" data-z="${k}">${n} <span class="zpct">${ZNAT_PCT[k]}</span></b> ${ZNAT_DESC[k]}</span>`).join('')}</div></details>`;
 const ZCOEF = { r0: 1, r1: 2, r1p: 2, r2: 3, r3: 5, r3p: 9, r4: 15, r5: 40, r6: 50 };
 const ZVEL = { r0: .41667, r1: .45, r1p: .48333, r2: .53333, r3: .61667, r3p: .66667, r4: .74667, r5: .86667, r6: 1 };
 const ECO_DEP = { natacion: { f: .75, por: 100, r3: '1:37', u: '/100 m' }, carrera: { f: 1, por: 1000, r3: '4:19', u: '/km' } };
