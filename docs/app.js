@@ -2304,6 +2304,7 @@ function sesionDep(s) {
       ${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}.</p>` : ''}
       ${(b.items || []).map((it, ii) => s.deporte === 'fuerza' ? itemHarbiz(s, b, bi, ii, it, r) : itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
     <section class="card list" data-fin="${s.id}"><h3>${r.rpe ? 'Sesión registrada' : 'Al terminar la sesión'}</h3>
+      <button type="button" class="sesok" data-hall="${s.id}" aria-pressed="${!!(tot && hech === tot)}"><span class="chk" aria-pressed="${!!(tot && hech === tot)}">${CHECK}</span>Sesión realizada</button>
       <label class="l">Minutos totales<input class="f mono" inputmode="numeric" data-min="${s.id}" value="${esc(r.minutos || s.duracion || '')}"></label>
       <div class="l">¿Cómo de dura ha sido? (RPE 0–10)<div class="rpe">${Array.from({ length: 11 }, (_, i) => `<button type="button" data-rpe="${s.id}|${i}" aria-pressed="${+r.rpe === i && r.rpe !== undefined && r.rpe !== ''}" aria-label="${i}: ${RPE_TXT[i]}">${i}</button>`).join('')}</div><small class="muted" id="rpeT-${s.id}">${r.rpe !== undefined && r.rpe !== '' ? RPE_TXT[+r.rpe] : 'Toca un número'}</small></div>
       <div class="row"><div class="grow"><small class="muted">Carga de la sesión</small><div class="ua" id="ua-${s.id}">${ua(r)} UA</div></div><button class="btn pri" data-guardar="${s.id}">Guardar</button></div>
@@ -2366,18 +2367,17 @@ function itemResumen(s, b, bi, ii, it, r) {
   // Comentario del ejercicio (indicaciones del entrenador o lo que escribió el deportista): icono amarillo si hay; al tocarlo se ve
   const com = r.coment?.[`${bi}|${ii}`] || '', verC = S.ui.hCom?.has(k);
   const panel = com && verC ? `<div class="exmc"><p>${esc(com)}</p></div>` : '';
-  return `<div class="exw"><details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span>${(() => {
+  return `<div class="exw"><details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span>${com ? `<button type="button" class="exm on" data-hx="hCom|${k}" aria-pressed="${!!verC}" aria-label="Ver comentario">${ICO_H.nota}</button>` : ''}${vidId(it.video) ? `<button type="button" class="exv" ${tramo(it.video)} data-n="${esc(it.nombre || '')}" aria-label="Ver vídeo: ${esc(it.nombre || '')}">${PLAY}</button>` : ''}${(() => {
     // Carga sin desplegar: un solo campo de kg para todas las series (si cada serie lleva un peso distinto, se apunta en el detalle)
     const kgs = Array.from({ length: n }, (_, j) => r.sets?.[`${bi}|${ii}|${j}`]?.kg || ''), iguales = kgs.every(v => v === kgs[0]), ult = ultimaKg(it, s);
     return `<label class="exkgw">${iguales ? `<input class="exkg" data-kgall="${k}" inputmode="decimal" value="${esc(kgs[0])}" placeholder="${esc(ult?.kg.at(-1) ?? '—')}" aria-label="Kilos de ${esc(it.nombre || '')}">` : `<span class="exkgv">${esc(kgs.filter(Boolean).join(' · '))}</span>`}<span>kg</span></label>`;
-  })()}${com ? `<button type="button" class="exm on" data-hx="hCom|${k}" aria-pressed="${!!verC}" aria-label="Ver comentario">${ICO_H.nota}</button>` : ''}${vidId(it.video) ? `<button type="button" class="exv" ${tramo(it.video)} data-n="${esc(it.nombre || '')}" aria-label="Ver vídeo: ${esc(it.nombre || '')}">${PLAY}</button>` : ''}<button type="button" class="chk exk" data-hcomp="${k}" aria-pressed="${ok === n && n > 0}" aria-label="Realizado: ${esc(it.nombre || '')}">${CHECK}</button></summary>${itemDep(s, b, bi, ii, it, r)}</details>${panel}</div>`;
+  })()}</summary>${itemDep(s, b, bi, ii, it, r)}</details>${panel}</div>`;
 }
 /* Gimnasio como en Train2Go: la sesión en una hoja, cada parte con su título y cada ejercicio en una línea
    (series × reps · RPE · descanso) con su casilla de «Realizado». Al tocar el ejercicio se abre el detalle
    (vídeo, indicaciones y la tabla para apuntar los kilos). Abajo, «Marcar sesión como realizada». */
 function gymDoc(s, r, tot, hech) {
-  return `<section class="card swdoc gym">${(s.bloques || []).filter(b => (b.items || []).length).map((b, nb) => { const bi = s.bloques.indexOf(b); return `<div class="gblk" data-n="${nb % 6}"><h4>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}${(b.items || []).map((it, ii) => itemResumen(s, b, bi, ii, it, r)).join('')}</div>`; }).join('')}
-    <button type="button" class="btn ${tot && hech === tot ? 'ok' : 'pri'} gymok" data-hall="${s.id}">${CHECK} ${tot && hech === tot ? 'Sesión realizada' : 'Marcar sesión como realizada'}</button></section>`;
+  return `<section class="card swdoc gym">${(s.bloques || []).filter(b => (b.items || []).length).map((b, nb) => { const bi = s.bloques.indexOf(b); return `<div class="gblk" data-n="${nb % 6}"><h4>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}${(b.items || []).map((it, ii) => itemResumen(s, b, bi, ii, it, r)).join('')}</div>`; }).join('')}</section>`;
 }
 function itemDep(s, b, bi, ii, it, r) {
   const v = vidId(it.video), c = DEP[s.deporte]?.c;
@@ -2445,10 +2445,10 @@ function enlazarSesionDep(m) {
     if (b.dataset.hx) { e.preventDefault(); const [q, ...rest] = b.dataset.hx.split('|'), k = rest.join('|'); S.ui[q] = S.ui[q] || new Set(); S.ui[q].has(k) ? S.ui[q].delete(k) : S.ui[q].add(k); pinta(); if ((q === 'hNota' || q === 'hCom') && S.ui[q].has(k)) m.querySelector(`[data-com="${k}"]`)?.focus(); return; }
     if (b.dataset.hcrono) { const [d, ...nm] = b.dataset.hcrono.split('|'); return iniciarDescanso(d, nm.join('|')); }
     if (b.dataset.hall) {
-      e.preventDefault(); const sid = b.dataset.hall, s = byId('sesion', sid), r = reg(sid), ks = [];
-      (s.bloques || []).forEach((bl, bi) => (bl.items || []).forEach((it, ii) => { for (let j = 0; j < nSeries(bl, it); j++) ks.push(`${bi}|${ii}|${j}`); }));
-      const todas = ks.every(k => r.sets[k]?.ok); ks.forEach(k => r.sets[k] = { ...(r.sets[k] || {}), ok: !todas });
-      guardarReg(r); pinta(); if (!todas) { toast('¡Sesión realizada! Apunta los minutos y el RPE'); m.querySelector(`[data-fin="${sid}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return;
+      e.preventDefault(); const sid = b.dataset.hall, s = byId('sesion', sid), r = reg(sid), ks = [], fz = s.deporte === 'fuerza';
+      (s.bloques || []).forEach((bl, bi) => (bl.items || []).forEach((it, ii) => { if (fz) for (let j = 0; j < nSeries(bl, it); j++) ks.push(`${bi}|${ii}|${j}`); else ks.push(`${bi}|${ii}`); }));
+      const todas = ks.every(k => fz ? r.sets[k]?.ok : r.hecho[k]); ks.forEach(k => { if (fz) r.sets[k] = { ...(r.sets[k] || {}), ok: !todas }; else r.hecho[k] = !todas; });
+      guardarReg(r); pinta(); if (!todas) toast('¡Sesión realizada! Ahora elige el RPE y guarda'); return;
     }
     if (b.dataset.hcomp) { e.preventDefault();
       const [sid, bi, ii] = b.dataset.hcomp.split('|'), s = byId('sesion', sid), bl = s.bloques[+bi], it = bl.items[+ii], n = nSeries(bl, it), r = reg(sid);

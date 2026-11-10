@@ -545,3 +545,12 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .exkg:focus{outline:2px solid var(--accent);border-color:transparent}
 .exkgv{font:600 14px var(--f-num);color:var(--fg)}
 .swdoc.gym .exm,.swdoc.gym .exv,.swdoc.gym .exk{grid-row:1/4}
+/* Sin casilla por ejercicio: el campo de kilos va a la derecha */
+.swdoc.gym .exkgw{grid-column:4;grid-row:1/3;align-self:center;margin:0;flex-direction:column;gap:1px;font-size:11px}
+.swdoc.gym .exkg{width:60px}
+.swdoc.gym .exkgv{font-size:13px;text-align:center;max-width:70px}
+/* «Sesión realizada» junto al RPE del final */
+.sesok{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--line);background:var(--card2);color:var(--fg);border-radius:12px;padding:12px 14px;font:700 16px var(--f-ui,system-ui);cursor:pointer;text-align:left}
+.sesok .chk{pointer-events:none}
+.sesok[aria-pressed="true"]{background:color-mix(in srgb,var(--ok) 16%,var(--card));border-color:var(--ok)}
+.swdoc.gym .exd.done .exn{text-decoration:none;opacity:1}
