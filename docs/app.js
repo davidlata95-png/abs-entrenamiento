@@ -2366,7 +2366,11 @@ function itemResumen(s, b, bi, ii, it, r) {
   // Comentario del ejercicio (indicaciones del entrenador o lo que escribió el deportista): icono amarillo si hay; al tocarlo se ve
   const com = r.coment?.[`${bi}|${ii}`] || '', verC = S.ui.hCom?.has(k);
   const panel = com && verC ? `<div class="exmc"><p>${esc(com)}</p></div>` : '';
-  return `<div class="exw"><details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span>${com ? `<button type="button" class="exm on" data-hx="hCom|${k}" aria-pressed="${!!verC}" aria-label="Ver comentario">${ICO_H.nota}</button>` : ''}${vidId(it.video) ? `<button type="button" class="exv" ${tramo(it.video)} data-n="${esc(it.nombre || '')}" aria-label="Ver vídeo: ${esc(it.nombre || '')}">${PLAY}</button>` : ''}<button type="button" class="chk exk" data-hcomp="${k}" aria-pressed="${ok === n && n > 0}" aria-label="Realizado: ${esc(it.nombre || '')}">${CHECK}</button></summary>${itemDep(s, b, bi, ii, it, r)}</details>${panel}</div>`;
+  return `<div class="exw"><details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span>${(() => {
+    // Carga sin desplegar: un solo campo de kg para todas las series (si cada serie lleva un peso distinto, se apunta en el detalle)
+    const kgs = Array.from({ length: n }, (_, j) => r.sets?.[`${bi}|${ii}|${j}`]?.kg || ''), iguales = kgs.every(v => v === kgs[0]), ult = ultimaKg(it, s);
+    return `<label class="exkgw">${iguales ? `<input class="exkg" data-kgall="${k}" inputmode="decimal" value="${esc(kgs[0])}" placeholder="${esc(ult?.kg.at(-1) ?? '—')}" aria-label="Kilos de ${esc(it.nombre || '')}">` : `<span class="exkgv">${esc(kgs.filter(Boolean).join(' · '))}</span>`}<span>kg</span></label>`;
+  })()}${com ? `<button type="button" class="exm on" data-hx="hCom|${k}" aria-pressed="${!!verC}" aria-label="Ver comentario">${ICO_H.nota}</button>` : ''}${vidId(it.video) ? `<button type="button" class="exv" ${tramo(it.video)} data-n="${esc(it.nombre || '')}" aria-label="Ver vídeo: ${esc(it.nombre || '')}">${PLAY}</button>` : ''}<button type="button" class="chk exk" data-hcomp="${k}" aria-pressed="${ok === n && n > 0}" aria-label="Realizado: ${esc(it.nombre || '')}">${CHECK}</button></summary>${itemDep(s, b, bi, ii, it, r)}</details>${panel}</div>`;
 }
 /* Gimnasio como en Train2Go: la sesión en una hoja, cada parte con su título y cada ejercicio en una línea
    (series × reps · RPE · descanso) con su casilla de «Realizado». Al tocar el ejercicio se abre el detalle
@@ -2433,6 +2437,7 @@ function cuentaAtras(fin) {
   pinta(); el.onclick = acabar; t = setInterval(() => { n--; if (n <= 0) acabar(); else pinta(); }, 1000);
 }
 function enlazarSesionDep(m) {
+  m.querySelectorAll('.exkgw').forEach(l => l.onclick = e => e.preventDefault() || l.querySelector('input')?.focus());
   m.querySelectorAll('[data-exd]').forEach(d => d.ontoggle = () => { S.ui.exAb = S.ui.exAb || new Set(); d.open ? S.ui.exAb.add(d.dataset.exd) : S.ui.exAb.delete(d.dataset.exd); });
   m.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -2468,7 +2473,8 @@ function enlazarSesionDep(m) {
   };
   m.oninput = e => {
     const t = e.target;
-    if (t.dataset.kg) { const [sid, bi, ii, k] = t.dataset.kg.split('|'); const r = reg(sid), kk = `${bi}|${ii}|${k}`; r.sets[kk] = { ...(r.sets[kk] || {}), kg: t.value }; guardarReg(r); }
+    if (t.dataset.kgall) { const [sid, bi, ii] = t.dataset.kgall.split('|'), s = byId('sesion', sid), bl = s.bloques[+bi], r = reg(sid); for (let j = 0; j < nSeries(bl, bl.items[+ii]); j++) r.sets[`${bi}|${ii}|${j}`] = { ...(r.sets[`${bi}|${ii}|${j}`] || {}), kg: t.value }; guardarReg(r); m.querySelectorAll(`[data-kg^="${sid}|${bi}|${ii}|"]`).forEach(x => x.value = t.value); }
+    else if (t.dataset.kg) { const [sid, bi, ii, k] = t.dataset.kg.split('|'); const r = reg(sid), kk = `${bi}|${ii}|${k}`; r.sets[kk] = { ...(r.sets[kk] || {}), kg: t.value }; guardarReg(r); }
     else if (t.dataset.com) { const [sid, bi, ii] = t.dataset.com.split('|'); const r = reg(sid); r.coment[`${bi}|${ii}`] = t.value; guardarReg(r); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
     else if (t.dataset.nota) { const r = reg(t.dataset.nota); r.nota = t.value; guardarReg(r); }
     else if (t.dataset.min) { const r = reg(t.dataset.min); r.minutos = +t.value || ''; $(`#ua-${t.dataset.min}`).textContent = ua(r) + ' UA'; }

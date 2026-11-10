@@ -539,3 +539,9 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 /* Modo oscuro: comentario y textos de intensidad legibles */
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .exmc{background:#3a3210;border-color:#6b5a14;color:#fbeaa0}:root:not([data-theme="light"]) .exmc .com{background:var(--card)}:root:not([data-theme="light"]) .zi[data-z="r1"]{color:#c3c8cc}:root:not([data-theme="light"]) .zi[data-z="r3p"]{color:#5b9bff}:root:not([data-theme="light"]) .zi[data-z="r4"]{color:#b07cf0}:root:not([data-theme="light"]) .zi[data-z="r2"]{color:#ff5a5a}}
 :root[data-theme="dark"] .exmc{background:#3a3210;border-color:#6b5a14;color:#fbeaa0}:root[data-theme="dark"] .exmc .com{background:var(--card)}:root[data-theme="dark"] .zi[data-z="r1"]{color:#c3c8cc}:root[data-theme="dark"] .zi[data-z="r3p"]{color:#5b9bff}:root[data-theme="dark"] .zi[data-z="r4"]{color:#b07cf0}:root[data-theme="dark"] .zi[data-z="r2"]{color:#ff5a5a}
+/* Kilos sin desplegar el ejercicio */
+.exkgw{grid-column:1;display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;color:var(--muted);width:max-content}
+.exkg{width:64px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--fg);font:600 15px var(--f-num);text-align:center}
+.exkg:focus{outline:2px solid var(--accent);border-color:transparent}
+.exkgv{font:600 14px var(--f-num);color:var(--fg)}
+.swdoc.gym .exm,.swdoc.gym .exv,.swdoc.gym .exk{grid-row:1/4}
