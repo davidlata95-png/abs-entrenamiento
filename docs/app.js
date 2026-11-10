@@ -95,16 +95,27 @@ const ZR_RE = /(^|[^a-z0-9])R\s?([0-6])(\s?\+|p\b)?(?!\d)/i;
 function zonaNat(t) { let m = t.match(ZNAT_RE); if (m) return ZNAT_K[m[2].toLowerCase()]; m = t.match(ZR_RE); return m ? 'r' + m[2] + (m[3] ? 'p' : '') : ''; }
 // Una línea de texto con, en natación, SOLO la intensidad en su color (A1, PAE, R200… como etiqueta; «fast», «easy», «200 pace»… en color)
 const INT_RE = /(^|[^a-z0-9áéíóúñ])(?:(suave|a[123]|pae|r400|r200|r100|fuerte)|(R\s?[0-6](?:\s?\+|p\b)?)|((?:50|100|200|400)\s*(?:pace|rp)|ritmo(?:\s+de)?\s+(?:50|100|200|400)|fast|sprint|all[\s-]*out|r[aá]pid[oa]s?|explosiv[oa]s?|m[aá]xim[oa]s?|threshold|umbral|css|easy|recovery|recuperaci[oó]n|suelto|relajad[oa]))(?![a-z0-9áéíóúñ])/gi;
-function lineaHTML(l, dep) {
-  const t = esc(l);
+// Términos de natación en inglés que se ven en español (solo al mostrar; el texto guardado no cambia)
+const GLOSA = [[/\b(400|200)\s*pace\b/gi, 'R$1'], [/\b(?:100|50)\s*pace\b/gi, 'R100'], [/\bw\/\s*fins\b|\bwith fins\b/gi, 'con aletas'], [/\bw\/\s*(?:paddles|padds)\b/gi, 'con palas'], [/\bw\/\s*/gi, 'con '],
+  [/\bneg(?:ative)?\.?\s*split\b/gi, 'split negativo'], [/\bdesc(?:end)?\s+to\b/gi, 'descendiendo hasta'], [/\bdescend(?:ing)?\b/gi, 'descendiendo'], [/\bascend(?:ing)?\b/gi, 'ascendiendo'],
+  [/\bbuild\s+to\b/gi, 'progresivo hasta'], [/\bbuild\b/gi, 'progresivo'], [/\bfins\b/gi, 'aletas'], [/\b(?:paddles|padds)\b/gi, 'palas'], [/\bkick\b/gi, 'patada'],
+  [/\bfree\b|\bfr\b/gi, 'crol'], [/\bback\b/gi, 'espalda'], [/\bbreast\b/gi, 'braza'], [/\bfly\b/gi, 'mariposa'], [/\bdrills?\b/gi, 'técnica'], [/\bscull\b/gi, 'remada'],
+  [/\bswim\b/gi, 'nado'], [/\bstroke\b/gi, 'estilo'], [/\bchoice\b/gi, 'a elegir'], [/\bloosen\b/gi, 'soltar'], [/\bEZ\b|\beasy\b/gi, 'suave'], [/\bc\/\s*25\s*m\b/gi, 'cada 25 m'],
+  [/\bUW\b/g, 'subacuático'], [/\s*\(SD\)/g, ''], [/\bfast\b/gi, 'fuerte']];
+const glosa = t => GLOSA.reduce((x, [re, es]) => x.replace(re, es), String(t));
+// modo 'color': la intensidad como texto en su color (A1 60-70%), como en una hoja de entreno; si no, como etiqueta
+function lineaHTML(l, dep, modo) {
+  if (dep === 'natacion') l = glosa(l);
+  const t = esc(l), col = modo === 'color';
   if (dep !== 'natacion' && dep !== 'carrera') return t;
   const nat = dep === 'natacion', pc = zk => nat && ZNAT_PCT[zk] ? ' <span class="zpct">' + ZNAT_PCT[zk] + '</span>' : '';
+  const z = (zk, txt) => col ? `<span class="zi" data-z="${zk}">${txt}${pc(zk)}</span>` : `<b class="zp" data-z="${zk}">${txt}${pc(zk)}</b>`;
   const otra = /(^|[^a-z0-9])(a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9])/i.test(l); // «a1 muy suave»: la intensidad es A1
-  return t.replace(INT_RE, (m, a, zn, rz, kw) => {
-    if (zn && otra && /^suave$/i.test(zn)) return m;
-    if (zn) { const zk = ZNAT_K[zn.toLowerCase()]; return `${a}<b class="zp" data-z="${zk}">${nat ? znDe('natacion', zk) : zn}${pc(zk)}</b>`; }
-    if (rz) { const zk = zonaNat(' ' + rz); return zk ? `${a}<b class="zp" data-z="${zk}">${rz}${pc(zk)}</b>` : m; }
-    const zk = zonaSin(kw); return zk ? `${a}<b class="zk" data-z="${zk}">${kw}</b>` : m;
+  return t.replace(INT_RE, (m, a, zn, rz, kw, off, all) => {
+    if (zn && otra && /^suave$/i.test(zn) && /muy\s*$/i.test(all.slice(0, off + a.length))) return m;
+    if (zn) { const zk = ZNAT_K[zn.toLowerCase()]; return a + z(zk, nat ? znDe('natacion', zk) : zn); }
+    if (rz) { const zk = zonaNat(' ' + rz); return zk ? a + z(zk, rz) : m; }
+    const zk = zonaSin(kw); return zk ? (col && nat ? a + z(zk, kw) : `${a}<b class="zk" data-z="${zk}">${kw}</b>`) : m;
   });
 }
 // Frases con mayúscula al empezar y punto al acabar (no toca las líneas que son series: «6 x 50…», «400 crol…»)
@@ -1356,7 +1367,7 @@ function verSesion(s, quienId) {
       ${r.nota ? `<p class="bubble">${esc(r.nota)}</p>` : ''}
       ${acts.map(actCard).join('')}${realizadoHTML(s, sel)}</div>
     <div class="card list"><h3>Conversación con ${esc(String(sel.nombre).split(' ')[0])}</h3>${hiloHTML(s, sel, regDep(sel), 'coach')}</div>` : ''}
-    ${(s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>${b.circuito ? `<p class="circ">↻ Circuito${b.descV ? ` · descanso ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}
+    ${esNatDoc(s) ? natDoc(s) : (s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>${b.circuito ? `<p class="circ">↻ Circuito${b.descV ? ` · descanso ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}
       ${(b.items || []).map((it, ii) => {
         const v = vidId(it.video), com = r.coment?.[`${bi}|${ii}`], px = presc(it, b);
         let body = '';
@@ -2254,13 +2265,39 @@ function respuestasNuevas() {
   const ss = [...new Set(l.map(m => m.ses))];
   return `<div class="card aviso"><b>💬 Tu entrenador te ha contestado</b>${ss.map(id => { const s = byId('sesion', id); return s ? `<button class="lnk" data-irs="${s.fecha}">${esc(s.titulo || DEP[s.deporte]?.n)} · ${fmtD(parseKey(s.fecha))}</button>` : ''; }).join('')}</div>`;
 }
+/* Sesión de natación como una hoja de entreno: título de cada parte en negrita, una tarea por línea, los detalles de cada
+   tarea con viñetas, la intensidad en español con su % y en su color, y los kilómetros al final */
+const SEC_ES = [[/^\s*(?:warm[\s-]*up|calentamiento)\b/i, 'Calentamiento'], [/^\s*(?:main[\s-]*set|serie principal|parte principal)\b/i, 'Serie principal'], [/^\s*(?:warm[\s-]*down|cool[\s-]*down|swim[\s-]*down|vuelta a la calma)\b/i, 'Vuelta a la calma'], [/^\s*pre[\s-]*set\b/i, 'Pre-serie']];
+const esNatDoc = s => s?.deporte === 'natacion' && (s.bloques || []).some(b => (b.items || []).some(it => it.texto));
+function natDoc(s) {
+  const ln = x => lineaHTML(x.charAt(0).toUpperCase() + x.slice(1), 'natacion', 'color');
+  const tarea = it => {
+    const ls = String(it.texto || '').replace(/\r/g, '').split('\n'), out = [];
+    let lista = null, dentro = false, previa = false, grupo = false;
+    const cerrar = () => { if (lista) { out.push(`<ul>${lista.join('')}</ul>`); lista = null; grupo = true; } };
+    // ¿Es una lista de tareas (una por línea) o una tarea con sus detalles debajo?
+    const variasT = !tareaDe(it, 'natacion').tit;
+    ls.forEach(l => {
+      const x = l.trim().replace(/^[-•*·–]\s+/, '');
+      if (!x) { cerrar(); dentro = previa = false; return; }
+      const num = /^\d+\)\s/.test(x), vin = /^\s*[-•*·–]\s+/.test(l) || num || /^\s{2,}/.test(l);
+      if (vin || (dentro && /^\d/.test(x)) || (previa && (!variasT || !/^\d/.test(x)))) { (lista = lista || []).push(`<li class="${num ? 'n' : ''}">${ln(x)}</li>`); if (/:$/.test(x)) dentro = true; return; }
+      cerrar(); out.push(`<p>${ln(x)}</p>`); dentro = esCab(x); previa = true;
+    });
+    cerrar();
+    return `<div class="swt ${grupo ? 'grp' : ''}">${out.join('')}</div>`;
+  };
+  const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
+  return `<section class="card swdoc">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre || ''))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${(b.items || []).map(it => it.texto ? tarea(it) : `<div class="swt"><p>${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p></div>`).join('')}`).join('')}
+    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${leyendaNat()}</section>`;
+}
 function sesionDep(s) {
   const r = regDe(s) || {}, c = DEP[s.deporte]?.c, g = s.grupo && byId('grupo', s.grupo);
   let tot = 0, hech = 0;
   (s.bloques || []).forEach((b, bi) => (b.items || []).forEach((it, ii) => { if (s.deporte === 'fuerza') { const n = nSeries(b, it); for (let k = 0; k < n; k++) { tot++; if (r.sets?.[`${bi}|${ii}|${k}`]?.ok) hech++; } } else { tot++; if (r.hecho?.[`${bi}|${ii}`]) hech++; } }));
   return `<section class="ses" style="--c:${c}" data-ses="${s.id}"><span class="meta">${g ? esc(g.nombre) + ' · ' : ''}${s.subtitulo ? esc(s.subtitulo) + ' · ' : ''}${DEP[s.deporte]?.n || ''}${s.duracion ? ` · ${s.duracion} min` : ''}${conEcos(s.deporte) && ecoDe(s) ? ' · ' + ecoTxt(ecoDe(s)) : ''}${s.rpeObj ? ` · RPE objetivo ${esc(s.rpeObj)}` : ''}</span><h2>${esc(s.titulo || DEP[s.deporte]?.n)}</h2>${s.notas ? `<p>${esc(s.notas)}</p>` : ''}
-    ${tot ? `<small class="muted">${hech} de ${tot} hechos</small><div class="progress"><i style="width:${tot ? hech / tot * 100 : 0}%"></i></div>` : ''}</section>
-    ${(s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
+    ${tot && !esNatDoc(s) ? `<small class="muted">${hech} de ${tot} hechos</small><div class="progress"><i style="width:${tot ? hech / tot * 100 : 0}%"></i></div>` : ''}</section>
+    ${esNatDoc(s) ? natDoc(s) : (s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
       ${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}.</p>` : ''}
       ${(b.items || []).map((it, ii) => itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
     <section class="card list" data-fin="${s.id}"><h3>${r.rpe ? 'Sesión registrada' : 'Al terminar la sesión'}</h3>

@@ -432,3 +432,19 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .zk[data-z="r3"]{color:var(--n3)}.zk[data-z="r3p"]{color:var(--n3p)}.zk[data-z="r4"]{color:var(--n4)}.zk[data-z="r5"]{color:var(--n5)}.zk[data-z="r6"]{color:var(--n6)}
 .wpn .zp{font-size:9.5px;padding:2px 4px}.wpn .zpct{display:none}
 @media (max-width:500px){.txt2{font-size:14.5px}}
+/* Natación: hoja de entreno (título de cada parte, una tarea por línea, detalles con viñetas, intensidad en color con %) */
+.swdoc{font:16px/1.5 var(--f-ui,system-ui);color:var(--fg);padding:14px 16px}
+.swdoc h4{font-size:16px;font-weight:800;margin:14px 0 8px}
+.swdoc h4:first-child{margin-top:0}
+.swdoc h4 small{font-weight:500;color:var(--muted);font-size:12px;margin-left:4px}
+.swdoc .swt p{margin:0}
+.swdoc .swt.grp{margin:8px 0 10px}
+.swdoc .swt ul{margin:2px 0 0;padding-left:30px}
+.swdoc .swt li::marker{color:var(--fg)}
+.swdoc .swkm{margin:14px 0 6px;color:var(--fg)}
+.zi{font-weight:600}.zi .zpct{font-weight:500;font-size:.8em;margin-left:1px}
+.zi[data-z="r0"]{color:var(--fg)}.zi[data-z="r1"]{color:#9aa0a6}.zi[data-z="r1p"]{color:#e0399b}.zi[data-z="r2"]{color:#e02424}
+.zi[data-z="r3"]{color:#ef7d00}.zi[data-z="r3p"]{color:#1a5fe0}.zi[data-z="r4"]{color:#8a2be2}.zi[data-z="r5"]{color:#22b53a}.zi[data-z="r6"]{color:#c99a00}
+@media (max-width:500px){.swdoc{font-size:15px;padding:12px 13px}}
+.swdoc .swt li.n{list-style:none;margin-left:-16px}
+.zi{white-space:nowrap}
