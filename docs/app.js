@@ -2302,7 +2302,8 @@ function sesionDep(s) {
     ${tot && !esNatDoc(s) ? `<small class="muted">${hech} de ${tot} hechos</small><div class="progress"><i style="width:${tot ? hech / tot * 100 : 0}%"></i></div>` : ''}</section>
     ${esNatDoc(s) ? natDoc(s) : (s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
       ${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}.</p>` : ''}
-      ${(b.items || []).map((it, ii) => s.deporte === 'fuerza' ? itemResumen(s, b, bi, ii, it, r) : itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
+      ${(b.items || []).map((it, ii) => s.deporte === 'fuerza' ? itemHarbiz(s, b, bi, ii, it, r) : itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
+    ${s.deporte === 'fuerza' ? `<div class="hzgo"><button type="button" class="btn pri" data-hgo="${s.id}">${S.ui.hEnCurso?.has(s.id) ? 'Terminar' : 'Iniciar entrenamiento'}</button></div>` : ''}
     <section class="card list" data-fin="${s.id}"><h3>${r.rpe ? 'Sesión registrada' : 'Al terminar la sesión'}</h3>
       <label class="l">Minutos totales<input class="f mono" inputmode="numeric" data-min="${s.id}" value="${esc(r.minutos || s.duracion || '')}"></label>
       <div class="l">¿Cómo de dura ha sido? (RPE 0–10)<div class="rpe">${Array.from({ length: 11 }, (_, i) => `<button type="button" data-rpe="${s.id}|${i}" aria-pressed="${+r.rpe === i && r.rpe !== undefined && r.rpe !== ''}" aria-label="${i}: ${RPE_TXT[i]}">${i}</button>`).join('')}</div><small class="muted" id="rpeT-${s.id}">${r.rpe !== undefined && r.rpe !== '' ? RPE_TXT[+r.rpe] : 'Toca un número'}</small></div>
@@ -2313,6 +2314,52 @@ function sesionDep(s) {
 }
 /* Gimnasio: cada ejercicio en una línea (nombre · series × reps · RPE · descanso) y, al tocarlo, se abre con el vídeo,
    las indicaciones y la tabla para apuntar los kilos */
+/* Gimnasio al estilo Harbiz: miniatura del vídeo, nombre, «3 series × 6», descanso y RPE; iconos de histórico, notas y
+   cronómetro de descanso; «Insertar marcas» abre la tabla de series (reps y kg) y «Completar» marca el ejercicio entero */
+const ICO_H = {
+  hist: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/></svg>',
+  nota: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+  crono: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>',
+  serie: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>',
+  reloj: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+};
+// Histórico de un ejercicio: kilos de cada serie en las sesiones anteriores
+function historialEj(it, s) {
+  const out = [];
+  D.sesion.filter(x => x.fecha < s.fecha && x.deporte === 'fuerza').forEach(x => (x.bloques || []).forEach((b, bi) => (b.items || []).forEach((y, ii) => {
+    if (!((it.ej && y.ej === it.ej) || (!it.ej && y.nombre === it.nombre))) return;
+    const r = regDe(x); if (!r?.sets) return;
+    const kg = Object.entries(r.sets).filter(([k, v]) => k.startsWith(`${bi}|${ii}|`) && (v.kg || v.ok)).sort((a, c) => +a[0].split('|')[2] - +c[0].split('|')[2]).map(([, v]) => v.kg ? v.kg + ' kg' : '✓');
+    if (kg.length) out.push({ f: x.fecha, reps: y.reps, kg });
+  })));
+  return out.sort((a, c) => c.f.localeCompare(a.f)).slice(0, 8);
+}
+function itemHarbiz(s, b, bi, ii, it, r) {
+  const n = nSeries(b, it), k = `${s.id}|${bi}|${ii}`, vid = vidId(it.video);
+  const ok = Array.from({ length: n }, (_, j) => !!r.sets?.[`${bi}|${ii}|${j}`]?.ok).filter(Boolean).length, hecho = ok === n && n > 0;
+  const ui = x => S.ui[x]?.has(k), com = r.coment?.[`${bi}|${ii}`] || '';
+  const rpe = it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe);
+  let html = `<article class="hz ${hecho ? 'done' : ''}" data-hz="${k}"><div class="hzt">
+    ${vid ? `<button type="button" class="thumb hzv" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo: ${esc(it.nombre)}"><img src="https://i.ytimg.com/vi/${vid}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : '<div class="hzv nov"></div>'}
+    <div class="hzi"><b>${esc(it.nombre || '')}</b><div class="hzic">
+      <button type="button" data-hx="hHist|${k}" aria-pressed="${!!ui('hHist')}" aria-label="Histórico">${ICO_H.hist}</button>
+      <button type="button" data-hx="hNota|${k}" aria-pressed="${!!(ui('hNota') || com)}" aria-label="Notas">${ICO_H.nota}</button>
+      ${it.desc ? `<button type="button" data-hcrono="${esc(it.desc)}|${esc(it.nombre || '')}" aria-label="Cronómetro de descanso">${ICO_H.crono}</button>` : ''}</div></div></div>
+    <p class="hzm">${ICO_H.serie}${n} ${b.circuito ? (n === 1 ? 'vuelta' : 'vueltas') : (n === 1 ? 'serie' : 'series')} × ${esc(it.reps || '—')}${it.carga ? ' · ' + esc(it.carga) : ''}${rpe ? ' · ' + esc(rpe) : ''}</p>
+    ${it.desc ? `<p class="hzm">${ICO_H.reloj}${esc(it.desc)}${/^\d/.test(it.desc) ? ' de descanso' : ''}</p>` : ''}
+    ${it.notas ? `<p class="hzcue">${esc(it.notas)}</p>` : ''}
+    <div class="hzb"><button type="button" class="btn" data-hx="hMarcas|${k}">${ui('hMarcas') ? '− Ocultar marcas' : '+ Insertar marcas'}</button><button type="button" class="btn ${hecho ? 'ok' : ''}" data-hcomp="${k}">${CHECK} ${hecho ? 'Completado' : ok ? `Completar (${ok}/${n})` : 'Completar'}</button></div>`;
+  if (ui('hMarcas')) {
+    const ult = ultimaKg(it, s);
+    html += `<table class="sets hzs"><thead><tr><th>Series</th><th>Repeticiones</th><th>Peso (kg)</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, j) => { const id = `${k}|${j}`, x = r.sets?.[`${bi}|${ii}|${j}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${j + 1}</td><td class="r">${esc(repsDe(it, j))}</td><td><input data-kg="${id}" inputmode="decimal" placeholder="${esc(ult?.kg[j] ?? ult?.kg.at(-1) ?? '0')}" value="${esc(x.kg || '')}" aria-label="Kilos serie ${j + 1}"></td><td class="c"><button type="button" class="chk" data-set="${id}" aria-pressed="${!!x.ok}" aria-label="Serie ${j + 1} hecha">${CHECK}</button></td></tr>`; }).join('')}</tbody></table>`;
+  }
+  if (ui('hHist')) {
+    const h = historialEj(it, s);
+    html += `<div class="hzh"><b>Histórico: ${esc(it.nombre || '')}</b>${h.length ? h.map(x => `<div><span>${fmtD(parseKey(x.f))}</span>${esc(x.kg.join(' · '))}</div>`).join('') : '<p class="muted">No tienes ningún dato pasado para este ejercicio</p>'}</div>`;
+  }
+  if (ui('hNota') || com) html += `<textarea class="com" data-com="${k}" rows="2" placeholder="Notas para tu entrenador">${esc(com)}</textarea>`;
+  return html + '</article>';
+}
 function itemResumen(s, b, bi, ii, it, r) {
   const n = nSeries(b, it), ok = Array.from({ length: n }, (_, k) => !!r.sets?.[`${bi}|${ii}|${k}`]?.ok).filter(Boolean).length;
   const x = [n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : ' × ' + (it.reps || '—')), it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'desc. ' + it.desc].filter(Boolean);
@@ -2369,10 +2416,35 @@ function ultimaVez(it, s) {
   })));
   return best || mj ? `<span class="last">${best ? `Última vez (${fmtD(parseKey(best.f))}): ${esc(best.kg.join(' · '))} kg` : ''}${best && mj ? ' · ' : ''}${mj ? `Mejor: ${String(mj).replace('.', ',')} kg` : ''}</span>` : '';
 }
+// «¡Prepárate!» 3, 2, 1 antes de empezar (se puede saltar tocando)
+function cuentaAtras(fin) {
+  const el = document.createElement('div'); el.className = 'hzcd'; document.body.append(el);
+  let n = 3, t; const acabar = () => { clearInterval(t); el.remove(); fin(); };
+  const pinta = () => el.innerHTML = `<b>¡Prepárate!</b><span>Vamos a empezar</span><strong>${n}</strong><small>Pulsa para saltar</small>`;
+  pinta(); el.onclick = acabar; t = setInterval(() => { n--; if (n <= 0) acabar(); else pinta(); }, 1000);
+}
 function enlazarSesionDep(m) {
   m.querySelectorAll('[data-exd]').forEach(d => d.ontoggle = () => { S.ui.exAb = S.ui.exAb || new Set(); d.open ? S.ui.exAb.add(d.dataset.exd) : S.ui.exAb.delete(d.dataset.exd); });
   m.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
+    const pinta = () => { const y = scrollY; renderDep(); scrollTo(0, y); };
+    if (b.dataset.hx) { const [q, ...rest] = b.dataset.hx.split('|'), k = rest.join('|'); S.ui[q] = S.ui[q] || new Set(); S.ui[q].has(k) ? S.ui[q].delete(k) : S.ui[q].add(k); pinta(); if (q === 'hNota' && S.ui[q].has(k)) m.querySelector(`[data-com="${k}"]`)?.focus(); return; }
+    if (b.dataset.hcrono) { const [d, ...nm] = b.dataset.hcrono.split('|'); return iniciarDescanso(d, nm.join('|')); }
+    if (b.dataset.hcomp) {
+      const [sid, bi, ii] = b.dataset.hcomp.split('|'), s = byId('sesion', sid), bl = s.bloques[+bi], it = bl.items[+ii], n = nSeries(bl, it), r = reg(sid);
+      const todas = Array.from({ length: n }, (_, j) => r.sets[`${bi}|${ii}|${j}`]?.ok).every(Boolean);
+      for (let j = 0; j < n; j++) r.sets[`${bi}|${ii}|${j}`] = { ...(r.sets[`${bi}|${ii}|${j}`] || {}), ok: !todas };
+      guardarReg(r); pinta(); return;
+    }
+    if (b.dataset.hgo) {
+      const sid = b.dataset.hgo; S.ui.hEnCurso = S.ui.hEnCurso || new Set();
+      if (S.ui.hEnCurso.has(sid)) { S.ui.hEnCurso.delete(sid); pinta(); return m.querySelector(`[data-fin="${sid}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      return cuentaAtras(() => {
+        S.ui.hEnCurso.add(sid); const s = byId('sesion', sid); S.ui.hMarcas = S.ui.hMarcas || new Set();
+        (s.bloques || []).forEach((bl, bi) => (bl.items || []).forEach((_, ii) => S.ui.hMarcas.add(`${sid}|${bi}|${ii}`)));
+        renderDep(); m.querySelector(`[data-ses="${sid}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
     if (b.dataset.v) { abrirVideo.h = !!b.dataset.h; return abrirVideo(b.dataset.v, b.dataset.n, b.dataset.s, b.dataset.e); }
     if (b.dataset.set) { const [sid, bi, ii, k] = b.dataset.set.split('|'); const r = reg(sid), kk = `${bi}|${ii}|${k}`; r.sets[kk] = { ...(r.sets[kk] || {}), ok: !r.sets[kk]?.ok }; guardarReg(r); const on = r.sets[kk].ok; const y = scrollY; renderDep(); scrollTo(0, y); if (on) { const s = byId('sesion', sid), bl = s.bloques[+bi], it = bl.items[+ii]; if (bl.circuito) { if (+ii === bl.items.length - 1) iniciarDescanso(bl.descV || it.desc, 'Fin de la vuelta ' + (+k + 1)); } else iniciarDescanso(it.desc, it.nombre); } return; }
     if (b.dataset.hecho) { const [sid, bi, ii] = b.dataset.hecho.split('|'); const r = reg(sid), kk = `${bi}|${ii}`; r.hecho[kk] = !r.hecho[kk]; guardarReg(r); const y = scrollY; renderDep(); scrollTo(0, y); return; }
