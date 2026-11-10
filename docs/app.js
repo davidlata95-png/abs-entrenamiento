@@ -2300,10 +2300,9 @@ function sesionDep(s) {
   (s.bloques || []).forEach((b, bi) => (b.items || []).forEach((it, ii) => { if (s.deporte === 'fuerza') { const n = nSeries(b, it); for (let k = 0; k < n; k++) { tot++; if (r.sets?.[`${bi}|${ii}|${k}`]?.ok) hech++; } } else { tot++; if (r.hecho?.[`${bi}|${ii}`]) hech++; } }));
   return `<section class="ses" style="--c:${c}" data-ses="${s.id}"><span class="meta">${g ? esc(g.nombre) + ' · ' : ''}${s.subtitulo ? esc(s.subtitulo) + ' · ' : ''}${DEP[s.deporte]?.n || ''}${s.duracion ? ` · ${s.duracion} min` : ''}${conEcos(s.deporte) && ecoDe(s) ? ' · ' + ecoTxt(ecoDe(s)) : ''}${s.rpeObj ? ` · RPE objetivo ${esc(s.rpeObj)}` : ''}</span><h2>${esc(s.titulo || DEP[s.deporte]?.n)}</h2>${s.notas ? `<p>${esc(s.notas)}</p>` : ''}
     ${tot && !esNatDoc(s) ? `<small class="muted">${hech} de ${tot} hechos</small><div class="progress"><i style="width:${tot ? hech / tot * 100 : 0}%"></i></div>` : ''}</section>
-    ${esNatDoc(s) ? natDoc(s) : (s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
+    ${esNatDoc(s) ? natDoc(s) : s.deporte === 'fuerza' ? gymDoc(s, r, tot, hech) : (s.bloques || []).map((b, bi) => `<section class="block" style="--c:${c}"><div class="bh"><i></i>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.series && s.deporte === 'fuerza' ? ` · ${b.series} ${b.circuito ? 'vueltas' : 'series'}` : ''} · ${(b.items || []).length} ${(b.items || []).length === 1 ? 'ejercicio' : 'ejercicios'}${b.tiempo ? `<em>${esc(b.tiempo)}</em>` : ''}</div>
       ${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}.</p>` : ''}
       ${(b.items || []).map((it, ii) => s.deporte === 'fuerza' ? itemHarbiz(s, b, bi, ii, it, r) : itemDep(s, b, bi, ii, it, r)).join('')}</section>`).join('')}
-    ${s.deporte === 'fuerza' ? `<div class="hzgo"><button type="button" class="btn pri" data-hgo="${s.id}">${S.ui.hEnCurso?.has(s.id) ? 'Terminar' : 'Iniciar entrenamiento'}</button></div>` : ''}
     <section class="card list" data-fin="${s.id}"><h3>${r.rpe ? 'Sesión registrada' : 'Al terminar la sesión'}</h3>
       <label class="l">Minutos totales<input class="f mono" inputmode="numeric" data-min="${s.id}" value="${esc(r.minutos || s.duracion || '')}"></label>
       <div class="l">¿Cómo de dura ha sido? (RPE 0–10)<div class="rpe">${Array.from({ length: 11 }, (_, i) => `<button type="button" data-rpe="${s.id}|${i}" aria-pressed="${+r.rpe === i && r.rpe !== undefined && r.rpe !== ''}" aria-label="${i}: ${RPE_TXT[i]}">${i}</button>`).join('')}</div><small class="muted" id="rpeT-${s.id}">${r.rpe !== undefined && r.rpe !== '' ? RPE_TXT[+r.rpe] : 'Toca un número'}</small></div>
@@ -2364,7 +2363,14 @@ function itemResumen(s, b, bi, ii, it, r) {
   const n = nSeries(b, it), ok = Array.from({ length: n }, (_, k) => !!r.sets?.[`${bi}|${ii}|${k}`]?.ok).filter(Boolean).length;
   const x = [n + (b.circuito ? (n === 1 ? ' vuelta' : ' vueltas') : ' × ' + (it.reps || '—')), it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && 'desc. ' + it.desc].filter(Boolean);
   const k = `${s.id}|${bi}|${ii}`, abierto = S.ui.exAb?.has(k);
-  return `<details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}</span><span class="exs">${ok ? `${ok}/${n}` : ''}</span></summary>${itemDep(s, b, bi, ii, it, r)}</details>`;
+  return `<details class="exd ${ok && ok === n ? 'done' : ''}" data-exd="${k}" ${abierto ? 'open' : ''}><summary><span class="exn">${esc(it.nombre || '')}</span><span class="exc">${x.map(esc).join(' · ')}${ok && ok < n ? ` · ${ok}/${n} series` : ''}</span><button type="button" class="chk exk" data-hcomp="${k}" aria-pressed="${ok === n && n > 0}" aria-label="Realizado: ${esc(it.nombre || '')}">${CHECK}</button></summary>${itemDep(s, b, bi, ii, it, r)}</details>`;
+}
+/* Gimnasio como en Train2Go: la sesión en una hoja, cada parte con su título y cada ejercicio en una línea
+   (series × reps · RPE · descanso) con su casilla de «Realizado». Al tocar el ejercicio se abre el detalle
+   (vídeo, indicaciones y la tabla para apuntar los kilos). Abajo, «Marcar sesión como realizada». */
+function gymDoc(s, r, tot, hech) {
+  return `<section class="card swdoc gym">${(s.bloques || []).filter(b => (b.items || []).length).map(b => { const bi = s.bloques.indexOf(b); return `<h4>${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${b.circuito ? `<p class="circ">↻ Circuito: haz los ejercicios seguidos${b.descV ? ` y descansa ${esc(b.descV)} al acabar cada vuelta` : ''}</p>` : ''}${(b.items || []).map((it, ii) => itemResumen(s, b, bi, ii, it, r)).join('')}`; }).join('')}
+    <button type="button" class="btn ${tot && hech === tot ? 'ok' : 'pri'} gymok" data-hall="${s.id}">${CHECK} ${tot && hech === tot ? 'Sesión realizada' : 'Marcar sesión como realizada'}</button></section>`;
 }
 function itemDep(s, b, bi, ii, it, r) {
   const v = vidId(it.video), c = DEP[s.deporte]?.c;
@@ -2430,7 +2436,13 @@ function enlazarSesionDep(m) {
     const pinta = () => { const y = scrollY; renderDep(); scrollTo(0, y); };
     if (b.dataset.hx) { const [q, ...rest] = b.dataset.hx.split('|'), k = rest.join('|'); S.ui[q] = S.ui[q] || new Set(); S.ui[q].has(k) ? S.ui[q].delete(k) : S.ui[q].add(k); pinta(); if (q === 'hNota' && S.ui[q].has(k)) m.querySelector(`[data-com="${k}"]`)?.focus(); return; }
     if (b.dataset.hcrono) { const [d, ...nm] = b.dataset.hcrono.split('|'); return iniciarDescanso(d, nm.join('|')); }
-    if (b.dataset.hcomp) {
+    if (b.dataset.hall) {
+      e.preventDefault(); const sid = b.dataset.hall, s = byId('sesion', sid), r = reg(sid), ks = [];
+      (s.bloques || []).forEach((bl, bi) => (bl.items || []).forEach((it, ii) => { for (let j = 0; j < nSeries(bl, it); j++) ks.push(`${bi}|${ii}|${j}`); }));
+      const todas = ks.every(k => r.sets[k]?.ok); ks.forEach(k => r.sets[k] = { ...(r.sets[k] || {}), ok: !todas });
+      guardarReg(r); pinta(); if (!todas) { toast('¡Sesión realizada! Apunta los minutos y el RPE'); m.querySelector(`[data-fin="${sid}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return;
+    }
+    if (b.dataset.hcomp) { e.preventDefault();
       const [sid, bi, ii] = b.dataset.hcomp.split('|'), s = byId('sesion', sid), bl = s.bloques[+bi], it = bl.items[+ii], n = nSeries(bl, it), r = reg(sid);
       const todas = Array.from({ length: n }, (_, j) => r.sets[`${bi}|${ii}|${j}`]?.ok).every(Boolean);
       for (let j = 0; j < n; j++) r.sets[`${bi}|${ii}|${j}`] = { ...(r.sets[`${bi}|${ii}|${j}`] || {}), ok: !todas };
