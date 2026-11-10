@@ -93,22 +93,46 @@ const znDe = (dep, z) => (dep === 'natacion' ? Object.fromEntries(ZONAS_NAT) : Z
 const ZNAT_RE = /(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])/i;
 const ZR_RE = /(^|[^a-z0-9])R\s?([0-6])(\s?\+|p\b)?(?!\d)/i;
 function zonaNat(t) { let m = t.match(ZNAT_RE); if (m) return ZNAT_K[m[2].toLowerCase()]; m = t.match(ZR_RE); return m ? 'r' + m[2] + (m[3] ? 'p' : '') : ''; }
-// Pinta un entreno de natación escrito tal cual (sangrías y líneas en blanco incluidas), con cada intensidad en su color
-function txtHTML(texto, dep) {
-  if (dep !== 'natacion') return `<pre class="txt">${esc(texto)}</pre>`;
-  const pintar = (seg, z) => {
-    if (!z) return esc(seg);
-    const marcado = esc(seg).replace(/(^|[^a-z0-9áéíóúñ])(suave|a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9áéíóúñ])|(^|[^a-z0-9])(R\s?[0-6](?:\s?\+|p\b)?)(?!\d)/gi, (m, a, b, c, d) => { const zk = b ? ZNAT_K[b.toLowerCase()] : zonaNat(' ' + d) || z; return `${a ?? c ?? ''}<b class="zp" data-z="${zk}">${b ? znDe('natacion', ZNAT_K[b.toLowerCase()]) : d}${ZNAT_PCT[zk] ? ' <span class="zpct">' + ZNAT_PCT[zk] + '</span>' : ''}</b>`; });
-    return `<span class="zt" data-z="${z}">${marcado}</span>`;
-  };
-  const lineas = String(texto || '').split('\n').map(l => {
-    const sang = l.match(/^\s*/)[0], cont = l.slice(sang.length);
-    if (!cont) return '';
-    const segs = cont.split(/(\s*\+\s*)/), zs = segs.map((x, i) => i % 2 ? '' : zonaNat(x) || zonaSin(x)), unicas = [...new Set(zs.filter(Boolean))];
-    const comun = unicas.length === 1 ? unicas[0] : '';
-    return esc(sang) + segs.map((x, i) => i % 2 ? esc(x) : pintar(x, zs[i] || comun)).join('');
+// Una línea de texto con, en natación, SOLO la intensidad en su color (A1, PAE, R200… como etiqueta; «fast», «easy», «200 pace»… en color)
+const INT_RE = /(^|[^a-z0-9áéíóúñ])(?:(suave|a[123]|pae|r400|r200|r100|fuerte)|(R\s?[0-6](?:\s?\+|p\b)?)|((?:50|100|200|400)\s*(?:pace|rp)|ritmo(?:\s+de)?\s+(?:50|100|200|400)|fast|sprint|all[\s-]*out|r[aá]pid[oa]s?|explosiv[oa]s?|m[aá]xim[oa]s?|threshold|umbral|css|easy|recovery|recuperaci[oó]n|suelto|relajad[oa]))(?![a-z0-9áéíóúñ])/gi;
+function lineaHTML(l, dep) {
+  const t = esc(l);
+  if (dep !== 'natacion') return t;
+  const otra = /(^|[^a-z0-9])(a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9])/i.test(l); // «a1 muy suave»: la intensidad es A1
+  return t.replace(INT_RE, (m, a, zn, rz, kw) => {
+    if (zn && otra && /^suave$/i.test(zn)) return m;
+    if (zn) { const zk = ZNAT_K[zn.toLowerCase()]; return `${a}<b class="zp" data-z="${zk}">${znDe('natacion', zk)} <span class="zpct">${ZNAT_PCT[zk]}</span></b>`; }
+    if (rz) { const zk = zonaNat(' ' + rz); return zk ? `${a}<b class="zp" data-z="${zk}">${rz}${ZNAT_PCT[zk] ? ' <span class="zpct">' + ZNAT_PCT[zk] + '</span>' : ''}</b>` : m; }
+    const zk = zonaSin(kw); return zk ? `${a}<b class="zk" data-z="${zk}">${kw}</b>` : m;
   });
-  return `<pre class="txt nat">${lineas.join('\n')}</pre>`;
+}
+// Frases con mayúscula al empezar y punto al acabar (no toca las líneas que son series: «6 x 50…», «400 crol…»)
+const frase = x => { if (/^\d/.test(x)) return x; x = x.charAt(0).toUpperCase() + x.slice(1); return /[a-záéíóúñ0-9)"'´]$/i.test(x) ? x + '.' : x; };
+/* Entreno escrito maquetado como en Train2Go: párrafos con punto y aparte, cabeceras («6 x», «Main set:») en negrita
+   y lo que va dentro de cada repetición como lista. En natación solo la intensidad va en color. */
+const esCab = x => /^\d+\s*(x|×|rounds?|veces|vueltas|times|series)\b[^\d]*:?$/i.test(x) || /^\d+\s*[x×]\s*(\[[^\]]*\]|\([^)]*\))?\s*:?$/i.test(x) || (/:$/.test(x) && x.length < 60);
+function txtHTML(texto, dep, dentro0) {
+  const ls = String(texto || '').replace(/\r/g, '').split('\n'), out = [];
+  let lista = null, dentro = !!dentro0;
+  const cerrar = () => { if (lista) { out.push(`<ul class="tl">${lista.join('')}</ul>`); lista = null; } };
+  ls.forEach(l => {
+    const x = l.trim();
+    if (!x) { cerrar(); dentro = false; return; }
+    const cab = esCab(x);
+    const vineta = x.match(/^(?:[-•*·–]\s+)(.*)$/), num = /^\d+\)\s/.test(x);
+    if (cab) { cerrar(); out.push(`<p class="th">${lineaHTML(x.replace(/\s*:$/, ''), dep)}</p>`); dentro = true; return; }
+    if (vineta || num || /^\s{2,}/.test(l) || (dentro && /^\d/.test(x))) { (lista = lista || []).push(`<li class="${num ? 'n' : ''}">${lineaHTML(frase(vineta ? vineta[1] : x), dep)}</li>`); return; }
+    cerrar(); dentro = /:$/.test(x);
+    out.push(`<p>${lineaHTML(frase(x), dep)}</p>`);
+  });
+  cerrar();
+  return `<div class="txt2 ${dep === 'natacion' ? 'nat' : ''}">${out.join('')}</div>`;
+}
+// Título de una tarea: su nombre o, si no tiene (natación escrita), su primera línea; el resto va debajo
+function tareaDe(it, dep) {
+  if (it.nombre || !it.texto) return { tit: esc(it.nombre || ''), resto: it.texto || '', html: t => txtHTML(t, dep) };
+  const ls = String(it.texto).replace(/\r/g, '').split('\n'), i = ls.findIndex(l => l.trim()), t0 = ls[i].trim(), cab = esCab(t0);
+  return { tit: lineaHTML(t0.replace(/\s*:$/, ''), dep), resto: ls.slice(i + 1).join('\n'), html: t => txtHTML(t, dep, cab) };
 }
 // Palabras habituales en sets escritos (Instagram, Train2Go…) que equivalen a una intensidad; solo para colorear
 function zonaSin(t) {
@@ -1332,11 +1356,12 @@ function verSesion(s, quienId) {
       ${(b.items || []).map((it, ii) => {
         const v = vidId(it.video), com = r.coment?.[`${bi}|${ii}`], px = presc(it, b);
         let body = '';
-        if (it.texto) body += txtHTML(it.texto, s.deporte);
+        const tk = tareaDe(it, s.deporte);
+        if (tk.resto.trim()) body += tk.html(tk.resto);
         else if (it.filas?.length) body += `<ul class="filas ${s.deporte === 'natacion' ? 'nat' : ''}">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f, s.deporte))}</li>`).join('')}</ul>`;
         if (s.deporte === 'fuerza') { const n = nSeries(b, it); body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td class="kg mono">${x.kg ? esc(x.kg) + ' kg' : '<span class="muted">—</span>'}</td><td class="c">${x.ok ? `<span class="chk" aria-pressed="true" aria-label="Hecha">${CHECK}</span>` : ''}</td></tr>`; }).join('')}</tbody></table>`; }
         if (com) body += `<p class="bubble">${esc(com)}</p>`;
-        return `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${esc(it.nombre || '')}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
+        return `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${tk.tit}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
           ${v ? `<button type="button" class="thumb" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
           ${s.deporte !== 'fuerza' && r.hecho?.[`${bi}|${ii}`] ? `<span class="chk" aria-pressed="true" aria-label="Hecho">${CHECK}</span>` : ''}</div>${body}</article>`;
       }).join('')}</section>`).join('')}`;
@@ -2179,7 +2204,6 @@ function sesionCompacta(s) {
   // Cada bloque con su nombre y debajo sus ejercicios
   const items = (s.bloques || []).filter(b => (b.items || []).length).map((b, bi0) => { const bi = s.bloques.indexOf(b); return `<div class="wpblk"><div class="wpbh">${esc(b.nombre || 'Bloque ' + (bi + 1))}${b.circuito ? ' · ↻ circuito' : ''}</div>${(b.items || []).map((it, ii) => itemCompacto(s, b, bi, ii, it, r)).join('')}</div>`; });
   return `<div class="wpses" style="--c:${c}"><div class="wpsh"><i></i><b>${esc(s.titulo || DEP[s.deporte]?.n)}</b>${s.duracion ? `<small>${s.duracion}'</small>` : ''}${conEcos(s.deporte) && ecoDe(s) ? `<small class="mono">${ecoTxt(ecoDe(s))}</small>` : ''}${pct ? `<small class="wpok">${pct}%</small>` : ''}</div>
-    ${s.deporte === 'natacion' && s.bloques?.some(b => b.items?.some(it => it.texto)) ? mainSetCompacto(s) : ''}
     <div class="wpitems">${items.join('')}</div></div>`;
 }
 function itemCompacto(s, b, bi, ii, it, r) {
@@ -2194,17 +2218,8 @@ function itemCompacto(s, b, bi, ii, it, r) {
   }
   if (it.rpe) chips.push(/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe);
   const done = s.deporte === 'fuerza' ? Array.from({ length: nSeries(b, it) }, (_, k) => r.sets?.[`${bi}|${ii}|${k}`]?.ok).every(Boolean) && nSeries(b, it) > 0 : !!r.hecho?.[`${bi}|${ii}`];
-  return `<button class="wpex ${done ? 'done' : ''}" data-wpex="1"><span class="wpn">${esc(it.nombre || '')}</span>${chips.length ? `<span class="wpc">${chips.map(c => esc(c)).join(' · ')}</span>` : ''}</button>`;
-}
-function mainSetCompacto(s) {
-  const lines = [];
-  (s.bloques || []).forEach(b => (b.items || []).forEach(it => {
-    if (!it.texto) return;
-    const ms = mainSet(it.texto);
-    if (ms.length) ms.forEach(l => lines.push(l));
-  }));
-  if (!lines.length) return '';
-  return `<div class="wpms">${lines.slice(0, 4).map(l => `<span>${esc(l.replace(/\s+/g, ' ').trim()).slice(0, 60)}</span>`).join('')}${lines.length > 4 ? `<span class="muted">+${lines.length - 4} más</span>` : ''}</div>`;
+  if (!it.nombre && it.texto && s.deporte !== 'fuerza') { const d = it.dist ? (s.deporte === 'natacion' ? it.dist + ' m' : it.dist) : ''; if (d && !chips.includes(d)) chips.unshift(d); }
+  return `<button class="wpex ${done ? 'done' : ''}" data-wpex="1"><span class="wpn">${tareaDe(it, s.deporte).tit}</span>${chips.length ? `<span class="wpc">${chips.map(c => esc(c)).join(' · ')}</span>` : ''}</button>`;
 }
 function vDia(m) {
   const dia = parseKey(S.ui.dia), lun = monday(dia);
@@ -2255,11 +2270,13 @@ function sesionDep(s) {
 function itemDep(s, b, bi, ii, it, r) {
   const v = vidId(it.video), c = DEP[s.deporte]?.c;
   const extra = [it.dist && (s.deporte === 'natacion' ? it.dist + ' m' : it.dist), it.tiempo && (s.deporte === 'natacion' ? it.tiempo + ' min' : it.tiempo), it.ritmo, it.carga, it.rpe && (/^\d/.test(it.rpe) ? 'RPE ' + it.rpe : it.rpe), it.desc && (s.deporte === 'fuerza' ? 'Desc. ' + it.desc : 'Rec. ' + it.desc)].filter(Boolean).join(' · ');
-  const cab = `<div class="exh"><div class="t"><h3>${esc(it.nombre || '')}</h3>${s.deporte === 'fuerza' && it.reps ? `<span class="rx">Reps ${esc(it.reps)}${extra ? ' · ' + esc(extra) : ''}</span>` : extra ? `<span class="rx">${esc(extra)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}${s.deporte === 'fuerza' ? ultimaVez(it, s) : ''}</div>
+  const tk = tareaDe(it, s.deporte);
+  const cab = `<div class="exh"><div class="t"><h3>${tk.tit}</h3>${s.deporte === 'fuerza' && it.reps ? `<span class="rx">Reps ${esc(it.reps)}${extra ? ' · ' + esc(extra) : ''}</span>` : extra ? `<span class="rx">${esc(extra)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}${s.deporte === 'fuerza' ? ultimaVez(it, s) : ''}</div>
     ${v ? `<button type="button" class="thumb" ${tramo(it.video)} data-n="${esc(it.nombre)}" aria-label="Ver vídeo: ${esc(it.nombre)}"><img src="https://i.ytimg.com/vi/${v}/hqdefault.jpg" alt="" loading="lazy"><span>${PLAY}</span></button>` : ''}
     ${s.deporte !== 'fuerza' ? `<button type="button" class="chk" data-hecho="${s.id}|${bi}|${ii}" aria-pressed="${!!r.hecho?.[`${bi}|${ii}`]}" aria-label="Marcar hecho">${CHECK}</button>` : ''}</div>`;
   let body = '';
-  if (it.texto) body += txtHTML(it.texto, s.deporte);
+  if (tk.resto.trim()) body += tk.html(tk.resto);
+  else if (it.texto) { /* todo cabe en el título */ }
   else if (it.filas?.length) body += `<ul class="filas ${s.deporte === 'natacion' ? 'nat' : ''}">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f, s.deporte))}</li>`).join('')}</ul>`;
   if (s.deporte === 'fuerza') {
     const n = nSeries(b, it), ult = ultimaKg(it, s);

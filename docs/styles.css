@@ -419,3 +419,16 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .gymdias b{font-size:13px}
 .gymdias .chip{cursor:pointer;padding:6px 12px;font-size:13px}
 .gymdias small{font-size:11.5px}
+/* Entrenos escritos maquetados (estilo Train2Go): párrafos, cabeceras y listas; solo la intensidad en color */
+.txt2{font:15px/1.55 var(--f-ui,system-ui);color:var(--fg);display:flex;flex-direction:column;gap:6px;margin:2px 0 4px}
+.txt2 p{margin:0}
+.txt2 .th{font-weight:700;margin-top:4px}
+.txt2 .tl{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.txt2 .tl li::marker{color:var(--c,var(--muted))}
+.txt2 .tl li.n{list-style:none;margin-left:-20px}
+.ex h3 .zp,.wpn .zp{vertical-align:2px}
+.zk{font-weight:700}
+.zk[data-z="r0"]{color:var(--n0)}.zk[data-z="r1"]{color:var(--n1)}.zk[data-z="r1p"]{color:var(--n1p)}.zk[data-z="r2"]{color:var(--n2)}
+.zk[data-z="r3"]{color:var(--n3)}.zk[data-z="r3p"]{color:var(--n3p)}.zk[data-z="r4"]{color:var(--n4)}.zk[data-z="r5"]{color:var(--n5)}.zk[data-z="r6"]{color:var(--n6)}
+.wpn .zp{font-size:9.5px;padding:2px 4px}.wpn .zpct{display:none}
+@media (max-width:500px){.txt2{font-size:14.5px}}
