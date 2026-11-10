@@ -97,17 +97,18 @@ function zonaNat(t) { let m = t.match(ZNAT_RE); if (m) return ZNAT_K[m[2].toLowe
 const INT_RE = /(^|[^a-z0-9áéíóúñ])(?:(suave|a[123]|pae|r400|r200|r100|fuerte)|(R\s?[0-6](?:\s?\+|p\b)?)|((?:50|100|200|400)\s*(?:pace|rp)|ritmo(?:\s+de)?\s+(?:50|100|200|400)|fast|sprint|all[\s-]*out|r[aá]pid[oa]s?|explosiv[oa]s?|m[aá]xim[oa]s?|threshold|umbral|css|easy|recovery|recuperaci[oó]n|suelto|relajad[oa]))(?![a-z0-9áéíóúñ])/gi;
 function lineaHTML(l, dep) {
   const t = esc(l);
-  if (dep !== 'natacion') return t;
+  if (dep !== 'natacion' && dep !== 'carrera') return t;
+  const nat = dep === 'natacion', pc = zk => nat && ZNAT_PCT[zk] ? ' <span class="zpct">' + ZNAT_PCT[zk] + '</span>' : '';
   const otra = /(^|[^a-z0-9])(a[123]|pae|r400|r200|r100|fuerte)(?![a-z0-9])/i.test(l); // «a1 muy suave»: la intensidad es A1
   return t.replace(INT_RE, (m, a, zn, rz, kw) => {
     if (zn && otra && /^suave$/i.test(zn)) return m;
-    if (zn) { const zk = ZNAT_K[zn.toLowerCase()]; return `${a}<b class="zp" data-z="${zk}">${znDe('natacion', zk)} <span class="zpct">${ZNAT_PCT[zk]}</span></b>`; }
-    if (rz) { const zk = zonaNat(' ' + rz); return zk ? `${a}<b class="zp" data-z="${zk}">${rz}${ZNAT_PCT[zk] ? ' <span class="zpct">' + ZNAT_PCT[zk] + '</span>' : ''}</b>` : m; }
+    if (zn) { const zk = ZNAT_K[zn.toLowerCase()]; return `${a}<b class="zp" data-z="${zk}">${nat ? znDe('natacion', zk) : zn}${pc(zk)}</b>`; }
+    if (rz) { const zk = zonaNat(' ' + rz); return zk ? `${a}<b class="zp" data-z="${zk}">${rz}${pc(zk)}</b>` : m; }
     const zk = zonaSin(kw); return zk ? `${a}<b class="zk" data-z="${zk}">${kw}</b>` : m;
   });
 }
 // Frases con mayúscula al empezar y punto al acabar (no toca las líneas que son series: «6 x 50…», «400 crol…»)
-const frase = x => { if (/^\d/.test(x)) return x; x = x.charAt(0).toUpperCase() + x.slice(1); return /[a-záéíóúñ0-9)"'´]$/i.test(x) ? x + '.' : x; };
+const frase = x => { if (!/^\d/.test(x)) x = x.charAt(0).toUpperCase() + x.slice(1); return /[a-záéíóúñ0-9)"'´]$/i.test(x) ? x + '.' : x; };
 /* Entreno escrito maquetado como en Train2Go: párrafos con punto y aparte, cabeceras («6 x», «Main set:») en negrita
    y lo que va dentro de cada repetición como lista. En natación solo la intensidad va en color. */
 const esCab = x => /^\d+\s*(x|×|rounds?|veces|vueltas|times|series)\b[^\d]*:?$/i.test(x) || /^\d+\s*[x×]\s*(\[[^\]]*\]|\([^)]*\))?\s*:?$/i.test(x) || (/:$/.test(x) && x.length < 60);
@@ -132,6 +133,9 @@ function txtHTML(texto, dep, dentro0) {
 function tareaDe(it, dep) {
   if (it.nombre || !it.texto) return { tit: esc(it.nombre || ''), resto: it.texto || '', html: t => txtHTML(t, dep) };
   const ls = String(it.texto).replace(/\r/g, '').split('\n'), i = ls.findIndex(l => l.trim()), t0 = ls[i].trim(), cab = esCab(t0);
+  let dentro = cab, tareas = 0;
+  ls.slice(i + 1).forEach(l => { const x = l.trim(); if (!x) { dentro = false; return; } if (esCab(x) || /:$/.test(x)) { dentro = true; return; } if (!dentro && /^\d/.test(x) && !/^\d+\)/.test(x)) tareas++; });
+  if (tareas >= 2 && !cab) return { tit: '', resto: it.texto, html: t => txtHTML(t, dep) };
   return { tit: lineaHTML(t0.replace(/\s*:$/, ''), dep), resto: ls.slice(i + 1).join('\n'), html: t => txtHTML(t, dep, cab) };
 }
 // Palabras habituales en sets escritos (Instagram, Train2Go…) que equivalen a una intensidad; solo para colorear
@@ -1358,7 +1362,7 @@ function verSesion(s, quienId) {
         let body = '';
         const tk = tareaDe(it, s.deporte);
         if (tk.resto.trim()) body += tk.html(tk.resto);
-        else if (it.filas?.length) body += `<ul class="filas ${s.deporte === 'natacion' ? 'nat' : ''}">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f, s.deporte))}</li>`).join('')}</ul>`;
+        else if (it.filas?.length) body += txtHTML(it.filas.map(f => txtFila(f, s.deporte)).join('\n'), s.deporte);
         if (s.deporte === 'fuerza') { const n = nSeries(b, it); body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td class="kg mono">${x.kg ? esc(x.kg) + ' kg' : '<span class="muted">—</span>'}</td><td class="c">${x.ok ? `<span class="chk" aria-pressed="true" aria-label="Hecha">${CHECK}</span>` : ''}</td></tr>`; }).join('')}</tbody></table>`; }
         if (com) body += `<p class="bubble">${esc(com)}</p>`;
         return `<article class="ex" style="--c:${c}"><div class="exh"><div class="t"><h3>${tk.tit}</h3>${px ? `<span class="rx">${esc(px)}</span>` : ''}${it.notas ? `<span class="cue">${esc(it.notas)}</span>` : ''}</div>
@@ -2277,7 +2281,7 @@ function itemDep(s, b, bi, ii, it, r) {
   let body = '';
   if (tk.resto.trim()) body += tk.html(tk.resto);
   else if (it.texto) { /* todo cabe en el título */ }
-  else if (it.filas?.length) body += `<ul class="filas ${s.deporte === 'natacion' ? 'nat' : ''}">${it.filas.map(f => `<li><i data-z="${f.z1 || 'r1'}"></i>${esc(txtFila(f, s.deporte))}</li>`).join('')}</ul>`;
+  else if (it.filas?.length) body += txtHTML(it.filas.map(f => txtFila(f, s.deporte)).join('\n'), s.deporte);
   if (s.deporte === 'fuerza') {
     const n = nSeries(b, it), ult = ultimaKg(it, s);
     body += `<table class="sets"><thead><tr><th>Serie</th><th>Reps</th><th>Kg</th><th class="c"></th></tr></thead><tbody>${Array.from({ length: n }, (_, k) => { const id = `${s.id}|${bi}|${ii}|${k}`, x = r.sets?.[`${bi}|${ii}|${k}`] || {}; return `<tr class="${x.ok ? 'done' : ''}"><td class="n">${k + 1}</td><td class="r">${esc(repsDe(it, k))}</td><td><input data-kg="${id}" inputmode="decimal" placeholder="${esc(ult?.kg[k] ?? ult?.kg.at(-1) ?? '—')}" value="${esc(x.kg || '')}" aria-label="Kilos serie ${k + 1}${ult ? ' (la última vez ' + esc(ult.kg[k] ?? ult.kg.at(-1)) + ' kg)' : ''}"></td><td class="c"><button type="button" class="chk" data-set="${id}" aria-pressed="${!!x.ok}" aria-label="Serie ${k + 1} hecha">${CHECK}</button></td></tr>`; }).join('')}</tbody></table>`;
