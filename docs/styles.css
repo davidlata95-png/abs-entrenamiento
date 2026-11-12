@@ -554,3 +554,18 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .sesok .chk{pointer-events:none}
 .sesok[aria-pressed="true"]{background:color-mix(in srgb,var(--ok) 16%,var(--card));border-color:var(--ok)}
 .swdoc.gym .exd.done .exn{text-decoration:none;opacity:1}
+/* Piscina: entrenos de los grupos del club */
+.hgtop{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.hgseg{display:grid;grid-template-columns:repeat(3,1fr)}
+.hgseg button{font-weight:700}
+.hgbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hgmodo{display:inline-grid;grid-template-columns:1fr 1fr;min-width:170px}
+.hghoy{align-self:center}
+.hgpie{font-size:12px;margin:10px 2px}
+.hgcfg{font-size:13px;color:var(--muted);margin:4px 2px 20px}
+.hgcfg summary{cursor:pointer}
+.hgcfg label{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.hgtit{display:block;font-size:12px;margin-bottom:4px;color:var(--fg)}
+.hgseg,.hgmodo{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.hgseg button,.hgmodo button{background:none;border:0;border-radius:9px;padding:9px 6px;color:var(--muted);font-weight:700;font-size:14px;cursor:pointer}
+.hgseg button[aria-pressed="true"],.hgmodo button[aria-pressed="true"]{background:var(--card);color:var(--fg);box-shadow:var(--sh)}

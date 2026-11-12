@@ -399,6 +399,15 @@ function api_(q) {
       dias.sort((a, b) => a.fecha < b.fecha ? -1 : 1);
       return { ok: true, nombre: ss.getName(), dias };
     }
+    // Entrenos de agua de los grupos del club, leídos tal cual de sus hojas (solo el entrenador)
+    if (q.op === 'hojaGrupo') {
+      const H = { sprint: [props_().getProperty('PLANI_ID') || PLANI_ID_, 'SPRINT GROUP'], main: [props_().getProperty('PLANI_ID') || PLANI_ID_, 'MACRO INV'], noche: [NOCHE_ID_, 'Sesiones'] }, h = H[q.g];
+      if (!h) return { ok: false, error: 'grupo' };
+      let ss; try { ss = SpreadsheetApp.openById(h[0]); } catch (e) { return { ok: false, error: 'No se puede abrir la hoja del grupo' }; }
+      const sh = ss.getSheets().find(x => x.getName().trim().toLowerCase() === h[1].toLowerCase());
+      if (!sh || !sh.getLastRow()) return { ok: false, error: 'No encuentro la pestaña «' + h[1] + '»' };
+      return { ok: true, nombre: ss.getName(), hoja: sh.getName(), filas: sh.getRange(1, 1, sh.getLastRow(), Math.min(sh.getLastColumn(), 30)).getDisplayValues() };
+    }
     if (q.op === 'todo') {
       const out = {};
       leerDatos_().forEach(r => { const d = doc_(r); if (d) (out[r.tipo] = out[r.tipo] || []).push(d); });
@@ -440,6 +449,7 @@ const URL_API_ = 'https://script.google.com/macros/s/AKfycbyYBd73ePdCyP2pho3jQjm
 const URL_APP_ = 'https://davidlata95-png.github.io/abs-entrenamiento/';
 const props_ = () => PropertiesService.getScriptProperties();
 const PLANI_ID_ = '1oVZb1YRDBtaPc8Wse6G9V9vLqtvRVUYByemGIXOsuEI'; // hoja «Plani ABS/JUN 26/27» (se puede cambiar con la propiedad PLANI_ID)
+const NOCHE_ID_ = '1X0OTqEh4h_Ux75goWuOcKp45Glubl_X06CHiFt-c6v8'; // hoja del Grupo noche (pestaña «Sesiones»)
 const stravaCfg_ = () => ({ id: props_().getProperty('STRAVA_ID') || '', secret: props_().getProperty('STRAVA_SECRET') || '' });
 function firma_(txt) {
   const b = Utilities.computeHmacSha256Signature(String(txt), stravaCfg_().secret || 'abs');

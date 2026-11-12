@@ -529,6 +529,7 @@ const ICO = {
   inicio: '<path d="M4 10.5L12 4l8 6.5V19a1 1 0 01-1 1h-4.5v-6h-5v6H5a1 1 0 01-1-1z"/>',
   cal: '<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   dep: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
+  piscina: '<path d="M2 17c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 21c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="15" cy="5" r="2"/><path d="M4 13l5-4 3 2 4-3"/>',
   grupos: '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M15 15c2.5-.4 4.6.8 5.4 3.6"/>',
   bib: '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>',
   planes: '<path d="M4 18h3v-6H4zM10.5 18h3V8h-3zM17 18h3V5h-3z"/>',
@@ -543,7 +544,7 @@ const ICO = {
 };
 const ico = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k] || ''}</svg>`;
 // Las cuatro primeras van siempre en la barra del móvil; el resto, en «Más»
-const TABS_C = [['inicio', 'Inicio'], ['cal', 'Calendario'], ['dep', 'Deportistas'], ['grupos', 'Grupos'], ['bib', 'Biblioteca'], ['planes', 'Planes'], ['bd', 'Base de datos'], ['ia', 'Asistente IA'], ['carga', 'Estadísticas']];
+const TABS_C = [['inicio', 'Inicio'], ['cal', 'Calendario'], ['piscina', 'Piscina'], ['dep', 'Deportistas'], ['grupos', 'Grupos'], ['bib', 'Biblioteca'], ['planes', 'Planes'], ['bd', 'Base de datos'], ['ia', 'Asistente IA'], ['carga', 'Estadísticas']];
 function marcoCoach() {
   S.tab = S.tab || 'inicio';
   const tit = TABS_C.find(t => t[0] === S.tab)?.[1] || '';
@@ -564,7 +565,7 @@ function marcoCoach() {
 function renderCoach() {
   LS.set('abs2-cache', { modo: 'coach', datos: D });
   const m = $('#main');
-  ({ inicio: vInicio, dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, bd: vBaseDatos, ia: vIA, carga: vCarga })[S.tab](m);
+  ({ inicio: vInicio, piscina: vPiscina, dep: vDeportistas, grupos: vGrupos, cal: vCalendario, planes: vPlanes, bib: vBiblioteca, bd: vBaseDatos, ia: vIA, carga: vCarga })[S.tab](m);
 }
 
 // Paso único: carga en el grupo Preparación física CDNS las 11 sesiones del mesociclo Fast Force (23/11–16/12),
@@ -594,6 +595,139 @@ async function importarHyroxDavid() {
     if (nuevos.length || faltan.length) { guardar([...nuevos, ...faltan]); renderCoach(); toast('Hyrox cargado en el perfil de David Lata (2/11–13/12)', 3500); }
     LS.set('abs2-mig-hyrox-dl', true);
   } catch (e) {}
+}
+
+/* ---------- Piscina: entrenos de agua de los grupos del club, leídos de sus hojas ----------
+   Sprinters → pestaña «SPRINT GROUP» (cada semana trae sus fechas)
+   Main Group → «MACRO INV» (semanas numeradas 1, 2, 3…; la fecha sale de cuándo empieza la semana 1)
+   Grupo noche → «Sesiones» de su hoja (Semana N con columnas L M X J V S; misma regla de fechas)
+   Solo lo ve el entrenador. Las hojas no se tocan: se leen y se guardan en este navegador para abrir rápido. */
+const HG = [['sprint', 'Sprinters'], ['main', 'Main Group'], ['noche', 'Grupo noche']];
+const HG_INI = { main: '2026-09-07', noche: '2026-09-07' }; // lunes de la semana 1 si no se cambia
+const MES_ES = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, sept: 8, set: 8, oct: 9, nov: 10, dic: 11 };
+const DIA_ES = { lunes: 0, martes: 1, miercoles: 2, 'miércoles': 2, jueves: 3, viernes: 4, sabado: 5, 'sábado': 5, domingo: 6, l: 0, m: 1, x: 2, j: 3, v: 4, s: 5, d: 6 };
+const numM = v => { const n = parseFloat(String(v || '').replace(/\./g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+const esTiempo = v => /^\d{1,2}:\d{2}(:\d{2})?$/.test(String(v || '').trim());
+const minDe = v => { const p = String(v || '').trim().split(':').map(Number); return p.length === 3 ? p[0] * 60 + p[1] + p[2] / 60 : p.length === 2 ? p[0] + p[1] / 60 : 0; };
+function hgIni(g) { return (LS.get('abs2-hg-ini', {}) || {})[g] || HG_INI[g]; }
+// Fecha más cercana a hoy con ese día y mes
+function fechaCerca(d, mes) { const h = today(); let best = null; [-1, 0, 1].forEach(k => { const f = new Date(h.getFullYear() + k, mes, d, 12); if (!best || Math.abs(f - h) < Math.abs(best - h)) best = f; }); return best; }
+// Sprinters: «Semana 11 · 9-15 nov», luego «LUNES 9 · título» cada 3 columnas, filas de tareas (tarea · tiempo · metros) y TOTAL
+function leerSprint(F) {
+  const dias = {};
+  for (let i = 0; i < F.length; i++) {
+    const w = String(F[i][0] || '').match(/^\s*Semana\s+(\d+)\s*[·\-–]\s*(\d{1,2})\s*[-–]\s*(\d{1,2})\s+([a-záé]+)/i);
+    if (!w) continue;
+    const mes = MES_ES[w[4].toLowerCase().slice(0, 4)] ?? MES_ES[w[4].toLowerCase().slice(0, 3)];
+    if (mes == null) continue;
+    const ini = fechaCerca(+w[2], mes), cab = F[i + 1] || [], grupos = [];
+    for (let c = 0; c < cab.length; c += 3) { const h = String(cab[c] || '').trim(); if (!h) continue; const m = h.match(/^([A-ZÁÉa-záé]+)\s+(\d{1,2})\s*[·\-–:]?\s*(.*)$/); const dd = m ? DIA_ES[m[1].toLowerCase()] : null; grupos.push({ c, dd: dd ?? grupos.length, tit: m ? m[3] : h }); }
+    const sem = grupos.map(g => ({ fecha: key(addDays(monday(ini), g.dd)), semana: 'Semana ' + w[1], titulo: g.tit, secciones: [{ nombre: '', tareas: [] }], total: null }));
+    let j = i + 2;
+    for (; j < F.length; j++) {
+      const r = F[j]; if (/^\s*Semana\s+\d+/i.test(r[0] || '')) break;
+      if (String(r[0] || '').trim().toUpperCase() === 'TOTAL') { grupos.forEach((g, k) => sem[k].total = { m: numM(r[g.c + 2]), t: r[g.c + 1] }); j++; break; }
+      grupos.forEach((g, k) => { const t = String(r[g.c] || '').trim(); if (t) sem[k].secciones[0].tareas.push({ texto: t, t: r[g.c + 1], m: numM(r[g.c + 2]) }); });
+    }
+    sem.forEach(d => dias[d.fecha] = d); i = j - 1;
+  }
+  return dias;
+}
+// Main Group (MACRO INV): una fila con solo el número de semana; debajo, 6 días × (tarea · tiempo · metros); la fila sin tarea con metros es el total
+const SEM_RE = /^\s*(?:semana\s+)?(\d{1,2})\s*$/i;
+function leerMacro(F, ini0) {
+  const dias = {}, ini = parseKey(ini0);
+  for (let i = 0; i < F.length; i++) {
+    const r = F[i], mk = String(r[0] || '').match(SEM_RE); if (!mk || r.slice(1, 18).some(x => String(x || '').trim())) continue;
+    const n = +mk[1], lun = addDays(ini, 7 * (n - 1)), sem = Array.from({ length: 6 }, (_, k) => ({ fecha: key(addDays(lun, k)), semana: 'Semana ' + n, titulo: '', secciones: [{ nombre: '', tareas: [] }], total: null }));
+    let j = i + 1;
+    for (; j < F.length; j++) {
+      const x = F[j]; if (SEM_RE.test(x[0] || '') && !x.slice(1, 18).some(y => String(y || '').trim())) break;
+      for (let k = 0; k < 6; k++) {
+        const t = String(x[3 * k] || '').trim(), ti = x[3 * k + 1], m = numM(x[3 * k + 2]);
+        if (t) sem[k].secciones[0].tareas.push({ texto: t, t: ti, m });
+        else if (m && (esTiempo(ti) || !String(ti || '').trim()) && sem[k].secciones[0].tareas.length) sem[k].total = { m, t: ti && ti !== '0:00:00' ? ti : '' };
+      }
+    }
+    sem.forEach(d => { if (d.secciones[0].tareas.length) dias[d.fecha] = d; }); i = j - 1;
+  }
+  return dias;
+}
+// Grupo noche (Sesiones): «Semana N, L,,, M,,,, X…»; cada día empieza en la columna de su letra (tarea, luego metros y minutos);
+// la primera columna da la parte (Calentamiento, TEC, P.PAL…); las filas Metros y Tiempo son los totales
+function leerNoche(F, ini0) {
+  const dias = {}, ini = parseKey(ini0);
+  for (let i = 0; i < F.length; i++) {
+    const w = String(F[i][0] || '').match(/^\s*Semana\s+(\d+)/i); if (!w) continue;
+    const cab = F[i], cols = [];
+    cab.forEach((v, c) => { const l = String(v || '').trim().toUpperCase(); if (c && /^[LMXJVSD]$/.test(l)) cols.push({ c, dd: DIA_ES[l.toLowerCase()] }); else if (c && /volumen/i.test(v)) cols.push({ c, fin: 1 }); });
+    const ds = cols.filter(x => !x.fin), fin = (cols.find(x => x.fin) || {}).c || cab.length;
+    const lun = addDays(ini, 7 * (+w[1] - 1)), sem = ds.map((d, k) => ({ c: d.c, h: (ds[k + 1] || { c: fin }).c, fecha: key(addDays(lun, d.dd)), semana: 'Semana ' + w[1], titulo: '', secciones: [], total: { m: 0, t: '' } }));
+    let parte = '', j = i + 1;
+    for (; j < F.length; j++) {
+      const r = F[j], et = String(r[0] || '').trim(); if (/^Semana\s+\d+/i.test(et)) break;
+      if (/^metros$/i.test(et)) { sem.forEach(d => d.total.m = numM(r[d.c])); continue; }
+      if (/^tiempo$/i.test(et)) { sem.forEach(d => d.total.t = r[d.c] ? r[d.c] + "'" : ''); continue; }
+      if (/^intensidad/i.test(et)) { sem.forEach(d => d.int = String(r[d.c] || '').trim()); continue; }
+      if (et) parte = et;
+      sem.forEach(d => {
+        const t = String(r[d.c] || '').trim(); if (!t) return;
+        const nums = r.slice(d.c + 1, d.h).map(x => String(x || '').trim()).filter(x => /^\d+([.,]\d+)?$/.test(x));
+        let sec = d.secciones.at(-1); if (!sec || sec.nombre !== parte) d.secciones.push(sec = { nombre: parte, tareas: [] });
+        sec.tareas.push({ texto: t, m: numM(nums[0]), t: nums[1] ? nums[1] + "'" : '' });
+      });
+    }
+    sem.forEach(d => { if (!d.secciones.length) return; const ya = dias[d.fecha]; const mt = x => x.secciones.reduce((a, s) => a + s.tareas.length, 0); if (!ya || mt(d) >= mt(ya)) dias[d.fecha] = d; }); i = j - 1;
+  }
+  return dias;
+}
+const LEER_HG = { sprint: F => leerSprint(F), main: F => leerMacro(F, hgIni('main')), noche: F => leerNoche(F, hgIni('noche')) };
+async function cargarHG(g, forzar) {
+  const c = LS.get('abs2-hg-' + g, null);
+  if (c && !forzar && Date.now() - c.at < 30 * 60e3) return c;
+  try {
+    const j = await api({ a: 'coach', op: 'hojaGrupo', g, clave: S.auth.clave });
+    if (!j.ok) throw new Error(j.error || 'error');
+    const n = { at: Date.now(), nombre: j.nombre, hoja: j.hoja, filas: j.filas }; LS.set('abs2-hg-' + g, n); return n;
+  } catch (e) { if (c) { toast('Sin conexión: muestro la última copia'); return c; } throw e; }
+}
+// Un día como hoja de entreno (mismo formato que la natación: partes en negrita, una tarea por línea, intensidad en color)
+function hgDocHTML(d) {
+  const s = { deporte: 'natacion', bloques: d.secciones.map(x => ({ nombre: x.nombre, items: x.tareas.map(t => ({ texto: t.texto, dist: t.m })) })), eco: { metros: d.total?.m || d.secciones.reduce((a, x) => a + x.tareas.reduce((b, t) => b + (t.m || 0), 0), 0) } };
+  return natDoc(s);
+}
+async function vPiscina(m) {
+  const g = S.ui.hg || LS.get('abs2-hg', 'sprint'), modo = S.ui.hgModo || 'dia';
+  S.ui.hgDia = S.ui.hgDia || key(today());
+  const dia = parseKey(S.ui.hgDia), lun = monday(dia);
+  m.innerHTML = `<div class="hgtop"><nav class="seg hgseg">${HG.map(([k, n]) => `<button type="button" data-hg="${k}" aria-pressed="${g === k}">${n}</button>`).join('')}</nav>
+    <div class="hgbar"><nav class="seg hgmodo"><button type="button" data-hgm="dia" aria-pressed="${modo === 'dia'}">Día</button><button type="button" data-hgm="sem" aria-pressed="${modo === 'sem'}">Semana</button></nav>
+    <button type="button" class="btn sm" id="hgre" title="Volver a leer la hoja">↻ Actualizar</button></div>
+    <div class="stepper"><button id="hgp" aria-label="${modo === 'dia' ? 'Día anterior' : 'Semana anterior'}">‹</button><div class="d"><b>${modo === 'dia' ? `${(t => t.charAt(0).toUpperCase() + t.slice(1))(fmtLong(dia))}` : `${fmtD(lun)} – ${fmtD(addDays(lun, 6))}`}</b><span id="hgsem"></span></div><button id="hgn" aria-label="${modo === 'dia' ? 'Día siguiente' : 'Semana siguiente'}">›</button></div>
+    ${key(dia) !== key(today()) ? `<button type="button" class="btn sm hghoy" id="hghoy">Ir a hoy</button>` : ''}</div><div id="hgc"><p class="muted center">Leyendo la hoja…</p></div>`;
+  m.querySelectorAll('[data-hg]').forEach(b => b.onclick = () => { S.ui.hg = b.dataset.hg; LS.set('abs2-hg', S.ui.hg); vPiscina(m); });
+  m.querySelectorAll('[data-hgm]').forEach(b => b.onclick = () => { S.ui.hgModo = b.dataset.hgm; vPiscina(m); });
+  const mover = n => { S.ui.hgDia = key(addDays(dia, n)); vPiscina(m); };
+  $('#hgp').onclick = () => mover(modo === 'dia' ? -1 : -7); $('#hgn').onclick = () => mover(modo === 'dia' ? 1 : 7);
+  if ($('#hghoy')) $('#hghoy').onclick = () => { S.ui.hgDia = key(today()); vPiscina(m); };
+  $('#hgre').onclick = async () => { $('#hgc').innerHTML = '<p class="muted center">Leyendo la hoja…</p>'; try { await cargarHG(g, true); toast('Hoja actualizada'); } catch (e) {} vPiscina(m); };
+  let c;
+  try { c = await cargarHG(g); } catch (e) { $('#hgc').innerHTML = `<section class="card"><p>No he podido leer la hoja: ${esc(e.message || '')}</p></section>`; return; }
+  if (S.ui.hg && S.ui.hg !== g || S.tab !== 'piscina') return;
+  const dias = LEER_HG[g](c.filas || []), hc = $('#hgc'); if (!hc) return;
+  const ajuste = g !== 'sprint' ? `<details class="hgcfg"><summary>¿No cuadra la semana? Cambiar cuándo empieza la semana 1</summary><label>Lunes de la semana 1 en «${esc(c.hoja)}» <input type="date" id="hgini" value="${hgIni(g)}"></label></details>` : '';
+  const pie = `<p class="muted hgpie">De la hoja «${esc(c.nombre)}» · pestaña «${esc(c.hoja)}» · leída ${new Date(c.at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>${ajuste}`;
+  if (modo === 'dia') {
+    const d = dias[key(dia)];
+    $('#hgsem').textContent = d ? d.semana + (d.titulo ? ' · ' + d.titulo : '') : '';
+    hc.innerHTML = (d ? `${d.int ? `<p class="muted">Intensidad: ${esc(d.int)}</p>` : ''}${hgDocHTML(d)}${d.total?.t ? `<p class="muted center">Tiempo: ${esc(d.total.t)}</p>` : ''}` : `<section class="card empty"><p>No hay entrenamiento en la hoja para este día.</p></section>`) + pie;
+  } else {
+    const sem = Object.values(dias).find(d => d.fecha >= key(lun) && d.fecha <= key(addDays(lun, 6)))?.semana || '';
+    $('#hgsem').textContent = sem;
+    hc.innerHTML = `<div class="wplan">${[0, 1, 2, 3, 4, 5, 6].map(i => { const f = addDays(lun, i), k = key(f), d = dias[k]; return `<div class="wpday ${k === key(today()) ? 'today' : ''}"><div class="wpdh" data-hgd="${k}"><span>${DIAS[i]}</span><b>${f.getDate()}</b></div>${d ? `<button type="button" class="wpex wpdoc" data-hgd="${k}">${d.titulo ? `<b class="hgtit">${esc(d.titulo)}</b>` : ''}${natDoc({ deporte: 'natacion', bloques: d.secciones.map(x => ({ nombre: x.nombre, items: x.tareas.map(t => ({ texto: t.texto, dist: t.m })) })), eco: { metros: d.total?.m || 0 } }, true)}</button>` : '<div class="wprest">—</div>'}</div>`; }).join('')}</div>` + pie;
+    hc.querySelectorAll('[data-hgd]').forEach(b => b.onclick = () => { S.ui.hgDia = b.dataset.hgd; S.ui.hgModo = 'dia'; vPiscina(m); scrollTo(0, 0); });
+  }
+  if ($('#hgini')) $('#hgini').onchange = e => { const v = e.target.value; if (!v) return; const o = LS.get('abs2-hg-ini', {}) || {}; o[g] = key(monday(parseKey(v))); LS.set('abs2-hg-ini', o); vPiscina(m); };
 }
 
 /* ---------- Inicio: quién entrena hoy y cómo va cada uno ---------- */
@@ -2291,7 +2425,7 @@ function natDoc(s, mini) {
     return `<div class="swt ${grupo ? 'grp' : ''}">${out.join('')}</div>`;
   };
   const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
-  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre || ''))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>${(b.items || []).map(it => it.texto ? tarea(it) : `<div class="swt"><p>${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p></div>`).join('')}`).join('')}
+  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `${b.nombre ? `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tarea(it) : `<div class="swt"><p>${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p></div>`).join('')}`).join('')}
     ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : leyendaNat()}</section>`;
 }
 function sesionDep(s) {
