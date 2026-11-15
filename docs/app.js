@@ -693,7 +693,7 @@ async function cargarHG(g, forzar) {
 }
 // Un día como hoja de entreno (mismo formato que la natación: partes en negrita, una tarea por línea, intensidad en color)
 function hgDocHTML(d) {
-  const s = { deporte: 'natacion', bloques: d.secciones.map(x => ({ nombre: x.nombre, items: x.tareas.map(t => ({ texto: t.texto, dist: t.m })) })), eco: { metros: d.total?.m || d.secciones.reduce((a, x) => a + x.tareas.reduce((b, t) => b + (t.m || 0), 0), 0) } };
+  const s = { deporte: 'natacion', bloques: d.secciones.map(x => ({ nombre: x.nombre, items: x.tareas.map(t => ({ texto: t.texto, dist: t.m, una: true })) })), eco: { metros: d.total?.m || d.secciones.reduce((a, x) => a + x.tareas.reduce((b, t) => b + (t.m || 0), 0), 0) } };
   return natDoc(s);
 }
 async function vPiscina(m) {
@@ -724,7 +724,7 @@ async function vPiscina(m) {
   } else {
     const sem = Object.values(dias).find(d => d.fecha >= key(lun) && d.fecha <= key(addDays(lun, 6)))?.semana || '';
     $('#hgsem').textContent = sem;
-    hc.innerHTML = `<div class="wplan">${[0, 1, 2, 3, 4, 5, 6].map(i => { const f = addDays(lun, i), k = key(f), d = dias[k]; return `<div class="wpday ${k === key(today()) ? 'today' : ''}"><div class="wpdh" data-hgd="${k}"><span>${DIAS[i]}</span><b>${f.getDate()}</b></div>${d ? `<button type="button" class="wpex wpdoc" data-hgd="${k}">${d.titulo ? `<b class="hgtit">${esc(d.titulo)}</b>` : ''}${natDoc({ deporte: 'natacion', bloques: d.secciones.map(x => ({ nombre: x.nombre, items: x.tareas.map(t => ({ texto: t.texto, dist: t.m })) })), eco: { metros: d.total?.m || 0 } }, true)}</button>` : '<div class="wprest">—</div>'}</div>`; }).join('')}</div>` + pie;
+    hc.innerHTML = `<div class="wplan">${[0, 1, 2, 3, 4, 5, 6].map(i => { const f = addDays(lun, i), k = key(f), d = dias[k]; return `<div class="wpday ${k === key(today()) ? 'today' : ''}"><div class="wpdh" data-hgd="${k}"><span>${DIAS[i]}</span><b>${f.getDate()}</b></div>${d ? `<button type="button" class="wpex wpdoc" data-hgd="${k}">${d.titulo ? `<b class="hgtit">${esc(d.titulo)}</b>` : ''}${natDoc({ deporte: 'natacion', bloques: d.secciones.map(x => ({ nombre: x.nombre, items: x.tareas.map(t => ({ texto: t.texto, dist: t.m, una: true })) })), eco: { metros: d.total?.m || 0 } }, true)}</button>` : '<div class="wprest">—</div>'}</div>`; }).join('')}</div>` + pie;
     hc.querySelectorAll('[data-hgd]').forEach(b => b.onclick = () => { S.ui.hgDia = b.dataset.hgd; S.ui.hgModo = 'dia'; vPiscina(m); scrollTo(0, 0); });
   }
   if ($('#hgini')) $('#hgini').onchange = e => { const v = e.target.value; if (!v) return; const o = LS.get('abs2-hg-ini', {}) || {}; o[g] = key(monday(parseKey(v))); LS.set('abs2-hg-ini', o); vPiscina(m); };
@@ -2406,27 +2406,53 @@ function respuestasNuevas() {
    tarea con viñetas, la intensidad en español con su % y en su color, y los kilómetros al final */
 const SEC_ES = [[/^\s*(?:warm[\s-]*up|calentamiento)\b/i, 'Calentamiento'], [/^\s*(?:main[\s-]*set|serie principal|parte principal)\b/i, 'Serie principal'], [/^\s*(?:warm[\s-]*down|cool[\s-]*down|swim[\s-]*down|vuelta a la calma)\b/i, 'Vuelta a la calma'], [/^\s*pre[\s-]*set\b/i, 'Pre-serie']];
 const esNatDoc = s => s?.deporte === 'natacion' && (s.bloques || []).some(b => (b.items || []).some(it => it.texto));
+/* Resumen de una tarea de natación: repeticiones y distancia, qué se nada, intensidades y material.
+   El texto completo sale al tocar la tarea. */
+const MAT_NAT = [[/aletas|\bfins?\b/i, 'aletas'], [/palas|paddles|padds/i, 'palas'], [/pull[\s-]?bo[uy]{1,2}|pullboy|pull[\s-]?buoy/i, 'pull-buoy'], [/\btubo\b|snorkel/i, 'tubo'], [/tabla|kick\s?board|\bboard\b/i, 'tabla'], [/paraca[ií]das|\bchute\b/i, 'paracaídas'], [/\bgomas?\b|\bbandas?\b/i, 'goma'], [/\bsox\b|calcetines/i, 'calcetines'], [/loofah/i, 'loofah']];
+const QUE_NAT = [[/\bIM\b|estilos/i, 'estilos'], [/patada|\bkick\b|\bpies\b/i, 'patada'], [/\bpull\b/i, 'pull'], [/t[eé]cnica|drill|\bTEC\b/i, 'técnica'], [/remada|scull/i, 'remada'], [/subacu[aá]tico|\bUW[KF]?\b|submarino/i, 'subacuático'], [/salidas?\b|\bstarts?\b/i, 'salidas'], [/virajes?\b|\bturns?\b/i, 'virajes'], [/mariposa|\bfly\b/i, 'mariposa'], [/espalda|\bback\b/i, 'espalda'], [/braza|breast/i, 'braza'], [/crol|\bfree\b|\bfr\b/i, 'crol']];
+function resumenTarea(tit, det, dist) {
+  const t0 = glosa(tit).trim(), todo = glosa([tit, ...det].join('\n')), x = '×';
+  let rep = '', m;
+  if ((m = t0.match(/^(\d+)\s*[x×]\s*\(([^)]{1,40})\)?/))) rep = `${m[1]} ${x} (${m[2].replace(/\s*[x×]\s*/g, x).replace(/\s+/g, ' ').trim()})`;
+  else if ((m = t0.match(/^(\d+(?:\s*[x×]\s*\d+)+)/))) rep = m[1].replace(/\s*[x×]\s*/g, ` ${x} `);
+  else if ((m = t0.match(/^(\d+)\s*(?:rounds?|rondas?|veces|vueltas|[x×])\s*:?\s*$/i)) || (m = t0.match(/^(\d+)\s*(?:rounds?|rondas?)\b/i))) {
+    const dentro = det.map(l => (glosa(l).trim().match(/^(\d+\s*[x×]\s*\d+|\d{2,4})(?=\D|$)/) || [])[1]).filter(Boolean).slice(0, 3).map(v => v.replace(/\s*[x×]\s*/, x));
+    rep = `${m[1]} ${+m[1] === 1 ? 'ronda' : 'rondas'}${dentro.length ? ': ' + dentro.join(' + ') : ''}`;
+  } else if ((m = t0.match(/^(\d{2,4})(?=\D|$)/))) rep = m[1];
+  const dm = +dist || 0, metros = dm && rep && !/^\d+$/.test(rep) && String(dm) !== rep ? `${dm.toLocaleString('es-ES')} m` : '';
+  if (/^\d+$/.test(rep)) rep += ' m';
+  const que = QUE_NAT.filter(([re]) => re.test(todo)).map(([, n]) => n).filter((n, i, a) => !(n === 'crol' && a.length > 1)).slice(0, 2);
+  const ints = [], vistos = new Set();
+  todo.replace(INT_RE, (mm, a, zn, rz, kw, off, all) => { const k = (zn || rz || kw || '').toLowerCase().replace(/\s/g, ''); if (zn && /^suave$/i.test(zn) && /muy\s*$/i.test(all.slice(0, off + a.length)) && /(a[123]|pae|r[124]00|fuerte)/i.test(all)) return mm; if (!vistos.has(k)) { vistos.add(k); ints.push(zn || rz || kw); } return mm; });
+  const mat = MAT_NAT.filter(([re]) => re.test(todo)).map(([, n]) => n);
+  return { rep: rep || t0.replace(/\(@[^)]*\)?/g, '').replace(/[:.]\s*$/, '').trim().split(/\s+/).slice(0, 5).join(' '), metros, que, ints, mat };
+}
 function natDoc(s, mini) {
   const ln = x => lineaHTML(x.charAt(0).toUpperCase() + x.slice(1), 'natacion', 'color');
-  const tarea = it => {
+  // Separa el texto de cada ítem en tareas: { tit, det: [líneas de detalle] }
+  const tareas = it => {
     const ls = String(it.texto || '').replace(/\r/g, '').split('\n'), out = [];
-    let lista = null, dentro = false, previa = false, grupo = false;
-    const cerrar = () => { if (lista) { out.push(`<ul>${lista.join('')}</ul>`); lista = null; grupo = true; } };
-    // ¿Es una lista de tareas (una por línea) o una tarea con sus detalles debajo?
-    const variasT = !tareaDe(it, 'natacion').tit;
+    const variasT = !it.una && !tareaDe(it, 'natacion').tit;
+    let dentro = false, previa = false;
     ls.forEach(l => {
       const x = l.trim().replace(/^[-•*·–]\s+/, '');
-      if (!x) { cerrar(); dentro = previa = false; return; }
+      if (!x) { dentro = previa = false; return; }
       const num = /^\d+\)\s/.test(x), vin = /^\s*[-•*·–]\s+/.test(l) || num || /^\s{2,}/.test(l);
-      if (vin || (dentro && /^\d/.test(x)) || (previa && (!variasT || !/^\d/.test(x)))) { (lista = lista || []).push(`<li class="${num ? 'n' : ''}">${ln(x)}</li>`); if (/:$/.test(x)) dentro = true; return; }
-      cerrar(); out.push(`<p>${ln(x)}</p>`); dentro = esCab(x); previa = true;
+      if (out.length && (vin || (dentro && /^\d/.test(x)) || (previa && (!variasT || !/^\d/.test(x))))) { out.at(-1).det.push({ x, num }); if (/:$/.test(x)) dentro = true; return; }
+      out.push({ tit: x, det: [] }); dentro = esCab(x); previa = true;
     });
-    cerrar();
-    return `<div class="swt ${grupo ? 'grp' : ''}">${out.join('')}</div>`;
+    if (out.length === 1 && it.dist) out[0].dist = it.dist;
+    return out;
+  };
+  const fila = t => {
+    const r = resumenTarea(t.tit, t.det.map(d => d.x), t.dist);
+    const res = `<span class="swq">${esc(r.rep)}</span>${r.metros ? `<span class="swmt">${esc(r.metros)}</span>` : ''}${r.que.length ? `<span class="swque">${esc(r.que.join(' · '))}</span>` : ''}${r.ints.map(z => ln(z)).join(' ')}${r.mat.length ? `<span class="swmat">${r.mat.map(esc).join(' · ')}</span>` : ''}`;
+    if (mini) return `<p class="swres">${res}</p>`;
+    return `<details class="swr"><summary>${res}</summary><div class="swfull"><p>${ln(t.tit)}</p>${t.det.length ? `<ul>${t.det.map(d => `<li class="${d.num ? 'n' : ''}">${ln(d.x)}</li>`).join('')}</ul>` : ''}</div></details>`;
   };
   const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
-  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `${b.nombre ? `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tarea(it) : `<div class="swt"><p>${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p></div>`).join('')}`).join('')}
-    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : leyendaNat()}</section>`;
+  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `${b.nombre ? `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tareas(it).map(fila).join('') : `<p class="swres">${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p>`).join('')}`).join('')}
+    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : `<p class="muted swhint">Toca una tarea para ver la explicación completa.</p>${leyendaNat()}`}</section>`;
 }
 function sesionDep(s) {
   const r = regDe(s) || {}, c = DEP[s.deporte]?.c, g = s.grupo && byId('grupo', s.grupo);
