@@ -518,7 +518,7 @@ async function entrarCoach(clave, silencioso) {
     // aplica lo que quedó pendiente en la cola
     colaG.forEach(c => c.op === 'guardar' ? c.docs.forEach(x => { const l = D[x.tipo]; const i = l.findIndex(d => d.id === x.doc.id); if (i >= 0) l[i] = x.doc; else l.push(x.doc); }) : c.items.forEach(x => D[x.tipo] = D[x.tipo].filter(d => d.id !== x.id)));
     LS.set('abs2-cache', { modo: 'coach', datos: D });
-    migrarCats(); migrarBib(); migrarEstilos(); marcoCoach(); vaciarCola(); importarFastForce(); importarFastForceV2(); importarHyroxDavid(); stravaSyncCoach(); pushCoach();
+    migrarCats(); migrarBib(); migrarEstilos(); marcoCoach(); vaciarCola(); importarFastForce(); importarFastForceV2(); importarFastForceV3(); importarHyroxDavid(); stravaSyncCoach(); pushCoach();
   } catch (e) {
     if (cache?.modo === 'coach') { Object.assign(D, cache.datos); marcoCoach(); setSync('Sin conexión: trabajando con la última copia'); }
     else if (!silencioso) $('#err').textContent = 'No hay conexión con la hoja.';
@@ -572,6 +572,16 @@ function renderCoach() {
 // justo después del High Force. Solo añade las que faltan, así que no pisa nada.
 // Fast Force v2 (19/11): movilidad MMSS + MMII, activación core + hombro + glúteo medio, lunes de alta carga a máxima velocidad
 // (pérdida de velocidad 20-20-15-10 %) y sábado de dynamic effort. Sustituye las sesiones cdns-ff-* que aún no tengan registros.
+// Fast Force v3 (19/11): el lunes pasa a series y repeticiones fijas (4-5 × 6-4) con pérdida de velocidad máxima 20-20-15-10 %.
+async function importarFastForceV3() {
+  if (LS.get('abs2-mig-fastforce3', false)) return;
+  try {
+    const docs = await (await fetch('migracion-fast-force-v3.json', { cache: 'no-store' })).json();
+    const libres = docs.filter(x => !D.registro.some(r => r.ses === x.doc.id));
+    if (libres.length) { guardar(libres); renderCoach(); toast('Fast Force: lunes de alta carga actualizado', 3500); }
+    LS.set('abs2-mig-fastforce3', true);
+  } catch (e) {}
+}
 async function importarFastForceV2() {
   if (LS.get('abs2-mig-fastforce2', false)) return;
   try {
