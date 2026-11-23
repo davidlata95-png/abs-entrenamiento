@@ -2466,9 +2466,17 @@ function natDoc(s, mini) {
     return out;
   };
   // Como una hoja de entreno: la tarea en su línea y, debajo y sangrado, lo que va dentro; todo visible, sin desplegar
-  const fila = t => mini
+  // «6x50 (aletas): 1 técnica + 1 nado» → «6x50 (aletas)» y debajo, sangrado, «1 técnica» / «1 nado» (como en una hoja de entreno)
+  const partir = (x, sep) => { const out = []; let d = 0, cur = ''; for (let i = 0; i < x.length; i++) { const c = x[i]; if (c === '(' || c === '[') d++; if (c === ')' || c === ']') d--; if (!d && x.startsWith(sep, i)) { out.push(cur.trim()); cur = ''; i += sep.length - 1; continue; } cur += c; } out.push(cur.trim()); return out.filter(Boolean); };
+  const abrir = t => {
+    if (t.det.length) return t;
+    const mm = t.tit.match(/^(\d+\s*[x×]?\s*\d*[^:]*?):\s+(.+)$/); if (!mm) return t;
+    for (const sep of [' · ', ' + ']) { const ps = partir(mm[2], sep); if (ps.length >= 2 && ps.every(x => /^\d/.test(x))) return { ...t, tit: mm[1], det: ps.map(x => ({ x })) }; }
+    return t;
+  };
+  const fila = t0 => { const t = abrir(t0); return mini
     ? `<p class="swres">${ln(t.tit)}</p>${t.det.map(d => `<p class="swres swin">${ln(d.x)}</p>`).join('')}`
-    : `<div class="swb"><p>${ln(t.tit)}</p>${t.det.map(d => `<p class="swin">${ln(d.x)}</p>`).join('')}</div>`;
+    : `<div class="swb"><p>${ln(t.tit)}</p>${t.det.map(d => `<p class="swin">${ln(d.x)}</p>`).join('')}</div>` };
   const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
   return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `${b.nombre ? `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tareas(it).map(fila).join('') : `<p class="swres">${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p>`).join('')}`).join('')}
     ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : `${leyendaNat()}`}</section>`;
