@@ -2465,15 +2465,13 @@ function natDoc(s, mini) {
     if (out.length === 1 && it.dist) out[0].dist = it.dist;
     return out;
   };
-  const fila = t => {
-    const r = resumenTarea(t.tit, t.det.map(d => d.x), t.dist);
-    const res = `<span class="swq">${esc(r.rep)}</span>${r.metros ? `<span class="swmt">${esc(r.metros)}</span>` : ''}${r.que.length ? `<span class="swque">${esc(r.que.join(' · '))}</span>` : ''}${r.ints.map(z => ln(z)).join(' ')}${r.mat.length ? `<span class="swmat">${r.mat.map(esc).join(' · ')}</span>` : ''}`;
-    if (mini) return `<p class="swres">${res}</p>`;
-    return `<details class="swr"><summary>${res}</summary><div class="swfull"><p>${ln(t.tit)}</p>${t.det.length ? `<ul>${t.det.map(d => `<li class="${d.num ? 'n' : ''}">${ln(d.x)}</li>`).join('')}</ul>` : ''}</div></details>`;
-  };
+  // Como una hoja de entreno: la tarea en su línea y, debajo y sangrado, lo que va dentro; todo visible, sin desplegar
+  const fila = t => mini
+    ? `<p class="swres">${ln(t.tit)}</p>${t.det.map(d => `<p class="swres swin">${ln(d.x)}</p>`).join('')}`
+    : `<div class="swb"><p>${ln(t.tit)}</p>${t.det.map(d => `<p class="swin">${ln(d.x)}</p>`).join('')}</div>`;
   const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
   return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `${b.nombre ? `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tareas(it).map(fila).join('') : `<p class="swres">${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p>`).join('')}`).join('')}
-    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : `<p class="muted swhint">Toca una tarea para ver la explicación completa.</p>${leyendaNat()}`}</section>`;
+    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : `${leyendaNat()}`}</section>`;
 }
 function sesionDep(s) {
   const r = regDe(s) || {}, c = DEP[s.deporte]?.c, g = s.grupo && byId('grupo', s.grupo);
