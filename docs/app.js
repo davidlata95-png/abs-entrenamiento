@@ -2474,12 +2474,18 @@ function natDoc(s, mini) {
     for (const sep of [' · ', ' + ']) { const ps = partir(mm[2], sep); if (ps.length >= 2 && ps.every(x => /^\d/.test(x))) return { ...t, tit: mm[1], det: ps.map(x => ({ x })) }; }
     return t;
   };
-  const fila = t0 => { const t = abrir(t0); return mini
-    ? `<p class="swres">${ln(t.tit)}</p>${t.det.map(d => `<p class="swres swin">${ln(d.x)}</p>`).join('')}`
-    : `<div class="swb"><p>${ln(t.tit)}</p>${t.det.map(d => `<p class="swin">${ln(d.x)}</p>`).join('')}</div>` };
+  // Propuesta A: repeticiones en columna a la izquierda; qué se nada, intervalo e intensidad a la derecha; detalles sangrados debajo
+  const REP_RE = /^(\d+\s*[x×]\s*\d+(?:\s*[x×]\s*\d+)*|\d+\s*[x×](?=\s*[(\[]|\s*$|\s*:)|\d{2,4}(?=\D|$))\s*:?\s*(.*)$/i;
+  const fila = t0 => {
+    const t = abrir(t0), mm = glosa(t.tit).match(REP_RE);
+    let rep = mm ? mm[1].replace(/\s*[x×]\s*/g, ' × ').trim() : '', resto = mm ? mm[2] : t.tit;
+    if (/^\(.*\)$/.test(resto.trim())) resto = resto.trim().slice(1, -1);
+    if (mini) return `<p class="swres"><b>${esc(rep)}</b> ${ln(resto)}</p>${t.det.map(d => `<p class="swres swin">${ln(d.x)}</p>`).join('')}`;
+    return `<div class="swa"><span class="swa-r">${esc(rep)}</span><div class="swa-d"><p>${resto ? ln(resto) : ''}</p>${t.det.length ? `<div class="swa-x">${t.det.map(d => `<p>${ln(d.x)}</p>`).join('')}</div>` : ''}</div></div>`;
+  };
   const m = s.eco?.metros || (s.bloques || []).reduce((a, b) => a + (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), 0);
-  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => `${b.nombre ? `<h4>${esc(SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre))}${b.tiempo ? ` <small>${esc(b.tiempo)}</small>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tareas(it).map(fila).join('') : `<p class="swres">${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p>`).join('')}`).join('')}
-    ${m ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : ''}${mini ? '' : `${leyendaNat()}`}</section>`;
+  return `<section class="${mini ? 'swdoc mini' : 'card swdoc'}">${(s.bloques || []).filter(b => (b.items || []).length).map(b => { const nom = SEC_ES.reduce((t, [re, es]) => t.replace(re, es), b.nombre || ''), mm = nom.match(/\s*·\s*([\d.,]+)\s*m\s*$/), mb = mm ? numM(mm[1]) : (b.items || []).reduce((x, it) => x + (+it.dist || 0), 0), der = [mb ? String(mb).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' m' : '', b.tiempo ? String(b.tiempo).replace(/"/g, '″') : ''].filter(Boolean).join(' · '); return `${nom || der ? `<h4 class="swh"><span>${esc(mm ? nom.slice(0, mm.index) : nom)}</span>${der ? `<b>${esc(der)}</b>` : ''}</h4>` : ''}${(b.items || []).map(it => it.texto ? tareas(it).map(fila).join('') : `<p class="swres">${ln([it.nombre, it.dist && it.dist + ' m'].filter(Boolean).join(' '))}</p>`).join('')}`; }).join('')}
+    ${m ? (mini ? `<p class="swkm">(${(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km)</p>` : `<div class="swtot"><span>Total</span><span>${[(m / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km', +s.duracion ? (s.duracion >= 60 ? Math.floor(s.duracion / 60) + ' h ' + String(s.duracion % 60).padStart(2, '0') + "'" : s.duracion + "'") : ''].filter(Boolean).join(' · ')}</span></div>`) : ''}${mini ? '' : `${leyendaNat()}`}</section>`;
 }
 function sesionDep(s) {
   const r = regDe(s) || {}, c = DEP[s.deporte]?.c, g = s.grupo && byId('grupo', s.grupo);

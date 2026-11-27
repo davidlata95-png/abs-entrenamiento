@@ -590,3 +590,14 @@ tr.mal td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .swb p{margin:0;line-height:1.45}
 .swb .swin,.swdoc.mini .swin{padding-left:22px}
 .swdoc.mini .swres{display:block;padding:1px 0}
+/* Natación · propuesta A (hoja limpia) */
+.swdoc .swh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.swdoc .swh:first-child{margin-top:4px}
+.swdoc .swh b{color:var(--fg);font-size:12.5px;white-space:nowrap}
+.swa{display:grid;grid-template-columns:78px 1fr;gap:0 10px;padding:7px 0}
+.swa-r{font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+.swa-d p{margin:0}
+.swa-x{margin-top:3px;padding-left:12px;border-left:2px solid var(--line);font-size:14px;color:var(--muted)}
+.swa-x p{padding:1px 0;color:var(--fg);opacity:.85}
+.swtot{display:flex;justify-content:space-between;margin:14px 0 4px;padding-top:10px;border-top:2px solid var(--fg);font-weight:800}
+.swdoc.mini .swh{font-size:10.5px;margin:8px 0 3px;padding-bottom:3px}.swdoc.mini .swh b{font-size:10.5px}
